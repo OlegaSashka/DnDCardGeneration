@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D&D 5e: Конструктор компактных карточек</title>
+
+  <!-- Внешние библиотеки: FontAwesome и html2pdf -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Локальные стили -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Верхняя панель управления -->
+  <div class="top-toolbar">
+    <div class="btn-group">
+      <button class="btn btn-accent" onclick="app.addNewCharacter()"><i class="fa-solid fa-plus"></i> Новая карточка</button>
+      <button class="btn btn-danger" onclick="app.deleteCurrentCharacter()"><i class="fa-solid fa-trash"></i> Удалить</button>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-accent" onclick="app.saveCurrentCardToFolder()" title="Сохранить в папку characters/"><i class="fa-solid fa-file-circle-check"></i> Сохранить в папку</button>
+      <button class="btn" onclick="app.triggerJSONLoad()"><i class="fa-solid fa-upload"></i> Загрузить JSON</button>
+      <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="app.loadFromJSON(event)">
+      
+      <!-- Кнопки экспорта в PDF -->
+      <button class="btn btn-accent" onclick="PDFExporter.exportFrontA5(app.activeCharacter)" title="Только лицевая сторона в A5"><i class="fa-solid fa-file-pdf"></i> Карточка (A5)</button>
+      <button class="btn btn-accent" onclick="PDFExporter.exportFoldableA4(app.activeCharacter)" title="Лист А4: характеристики сверху, описание снизу (под сгиб и склейку)"><i class="fa-solid fa-layer-group"></i> Карточка + Описание (А4)</button>
+      <button class="btn" onclick="PDFExporter.exportBackA5(app.activeCharacter)" title="Только описание на отдельном листе A5"><i class="fa-solid fa-book-open"></i> Описание (A5)</button>
+    </div>
+  </div>
+
+  <!-- Список вкладок персонажей -->
+  <div class="tabs-container" id="tabsList"></div>
+
+  <!-- Оболочка отображаемой карточки (Лицевая сторона) -->
+  <div class="sheet-wrapper">
+    <div class="card-container" id="activeCardRender">
+      <!-- Динамический рендеринг через CardRenderer -->
+    </div>
+  </div>
+
+  <!-- Модальное окно для фото/портрета -->
+  <div class="modal-overlay" id="avatarModal" onclick="app.closeAvatarModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <h4><i class="fa-solid fa-image"></i> Портрет персонажа</h4>
+      <label>1. Загрузить локальный файл с устройства:</label>
+      <input type="file" id="avatarFileInput" accept="image/*" onchange="app.handleAvatarFileUpload(event)">
+      <label>2. Или укажите локальный путь к файлу (напр. <code>images/hero.png</code>):</label>
+      <input type="text" id="avatarPathInput" placeholder="images/hero.png или URL">
+      <div class="modal-actions">
+        <button class="btn" onclick="app.clearAvatar()">Удалить фото</button>
+        <button class="btn btn-accent" onclick="app.saveAvatarPath()">Применить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Оболочка оборотной стороны (Описание и Портрет) -->
+  <div class="sheet-wrapper">
+    <div id="descBlock">
+      <!-- Динамический рендеринг через CardRenderer -->
+    </div>
+  </div>
+
+  <!-- Модульные JS-классы приложения -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

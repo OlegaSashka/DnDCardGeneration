@@ -1,0 +1,11 @@
+# Игнорируем сохранённые карточки персонажей
+characters/*.json
+*.json
+
+# Системные файлы и кэш Python
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
