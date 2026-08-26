@@ -26,9 +26,9 @@
       <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="app.loadFromJSON(event)">
       
       <!-- Кнопки экспорта в PDF -->
-      <button class="btn btn-accent" onclick="PDFExporter.exportFrontA5(app.activeCharacter)" title="Только лицевая сторона в A5"><i class="fa-solid fa-file-pdf"></i> Карточка (A5)</button>
-      <button class="btn btn-accent" onclick="PDFExporter.exportFoldableA4(app.activeCharacter)" title="Лист А4: характеристики сверху, описание снизу (под сгиб и склейку)"><i class="fa-solid fa-layer-group"></i> Карточка + Описание (А4)</button>
-      <button class="btn" onclick="PDFExporter.exportBackA5(app.activeCharacter)" title="Только описание на отдельном листе A5"><i class="fa-solid fa-book-open"></i> Описание (A5)</button>
+      <button class="btn btn-accent" onclick="PDFExporter.exportFoldableA4(app.activeCharacter)" title="Лист А4: характеристики сверху, описание снизу (под сгиб и склейку)"><i class="fa-solid fa-file-pdf"></i> Карточка + Описание (А4)</button>
+      <button class="btn" onclick="PDFExporter.exportFrontA5(app.activeCharacter)" title="Только лицевая сторона в A5"><i class="fa-solid fa-file-pdf"></i> Карточка (A5)</button>
+      <button class="btn" onclick="PDFExporter.exportBackA5(app.activeCharacter)" title="Только описание на отдельном листе A5"><i class="fa-solid fa-file-pdf"></i> Описание (A5)</button>
     </div>
   </div>
 

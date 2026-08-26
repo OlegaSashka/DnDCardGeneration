@@ -33,7 +33,7 @@ export class CardRenderer {
                 <div style="font-size:7.5pt; color:#475569; display:flex; gap:8px;">
                   <span>Раса: <b style="border-bottom:1px solid #cbd5e1; min-width:40px; display:inline-block;">${c.race || "&nbsp;"}</b></span>
                   <span>Класс: <b style="border-bottom:1px solid #cbd5e1; min-width:40px; display:inline-block;">${c.class || "&nbsp;"}</b></span>
-                  <span style="flex-grow:1; border-bottom:1px solid #cbd5e1; min-width:50px;">${c.meta || "&nbsp;"}</span>
+                  <span>Инфо: <b style="flex-grow:1; border-bottom:1px solid #cbd5e1; min-width:50px;">${c.meta || "&nbsp;"}</b></span>
                 </div>
               </td>
               <td style="width:48px; text-align:right; padding:2px 4px; vertical-align:middle;">

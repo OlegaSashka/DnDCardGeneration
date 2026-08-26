@@ -459,7 +459,7 @@ class DnDApp {
     c.extraVal = getVal("field-extraVal");
     c.extraSub = getVal("field-extraSub");
     c.inventory = getVal("field-inventory");
-
+    
     const curHpEl = document.getElementById("field-hp-cur");
     const bonusHpEl = document.getElementById("field-hp-bonus");
 
