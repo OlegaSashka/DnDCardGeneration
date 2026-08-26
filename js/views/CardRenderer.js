@@ -106,10 +106,10 @@ export class CardRenderer {
     `;
   }
 
-  static getBackHTML(c) {
+static getBackHTML(c) {
     const hasAvatar = Boolean(c.avatar && c.avatar.trim());
     const avatarHTML = hasAvatar ? `
-      <div style="width: 30%; height: 102mm; flex-shrink: 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #f8fafc;">
+      <div style="width: 30%; height: 120mm; flex-shrink: 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #f8fafc;">
         <img src="${c.avatar}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="Портрет">
       </div>
     ` : "";
@@ -119,24 +119,9 @@ export class CardRenderer {
 
     return `
       <div style="width:194mm; height:134mm; max-height:134mm; overflow:hidden; border:2px solid #334155; border-radius:8px; padding:5px 8px; box-sizing:border-box; font-size:8pt; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1e293b; display:flex; flex-direction:column; justify-content:space-between;">
-        <table style="width:100%; border-collapse:collapse; margin-bottom:4px; background:#fff; color:#0f172a; border:1.5px solid #64748b; border-radius:6px; flex: 0 0 auto;">
-          <tr>
-            <td style="padding:3px 5px;">
-              <div style="font-size:11pt; font-weight:bold; color:#0f172a;">${c.name || "ИМЯ ПЕРСОНАЖА"}</div>
-              <div style="font-size:7.5pt; color:#475569;">Раса: <b>${c.race || "—"}</b> | Класс: <b>${c.class || "—"}</b> | ${c.meta || ""}</div>
-            </td>
-            <td style="width:48px; text-align:right; padding:2px 4px; vertical-align:middle;">
-              <div style="border:1.5px solid #64748b; border-radius:5px; background:#f1f5f9; text-align:center; padding:1px 2px; width:44px; margin-left:auto; box-sizing:border-box;">
-                <div style="font-size:5.5pt; font-weight:bold; color:#475569; text-transform:uppercase; line-height:1.1;">УРОВЕНЬ</div>
-                <div style="font-size:10.5pt; font-weight:bold; color:#0f172a; line-height:1.1; margin-top:1px;">${c.level || "1"}</div>
-              </div>
-            </td>
-          </tr>
-        </table>
-
-        <div style="display:flex; gap:8px; flex:1 1 auto; min-height:0; height:102mm; max-height:102mm; overflow:hidden; box-sizing:border-box;">
+        <div style="display:flex; gap:8px; flex:1 1 auto; min-height:0; height:120mm; max-height:120mm; overflow:hidden; box-sizing:border-box;">
           ${avatarHTML}
-          <div style="${textWidth} height:102mm; max-height:102mm; overflow:hidden; font-size:${descFontSize}pt; line-height:1.35; color:#334155; white-space:pre-wrap; word-break:break-word; text-align:justify; text-justify:inter-word; border:1px solid #cbd5e1; border-radius:6px; padding:5px 7px; background:#fafafa; box-sizing:border-box;">
+          <div style="${textWidth} height:120mm; max-height:120mm; overflow:hidden; font-size:${descFontSize}pt; line-height:1.35; color:#334155; white-space:pre-wrap; word-break:break-word; text-align:justify; text-justify:inter-word; border:1px solid #cbd5e1; border-radius:6px; padding:6px 8px; background:#fafafa; box-sizing:border-box;">
             ${c.description || "<i>Описание и предыстория персонажа не заполнены. Вы можете вписать их вручную.</i>"}
           </div>
         </div>

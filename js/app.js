@@ -404,24 +404,7 @@ class DnDApp {
 
     descContainer.innerHTML = `
       <div class="card-container desc-card-screen">
-        <table class="header-table" style="margin-bottom: 6px;">
-          <tr>
-            <td>
-              <div style="font-size: 11pt; font-weight: bold; color: #0f172a;" id="desc-sync-name">${c.name || "ИМЯ ПЕРСОНАЖА"}</div>
-              <div style="font-size: 7.5pt; color: #475569;" id="desc-sync-meta">
-                Раса: <b>${c.race || "—"}</b> | Класс: <b>${c.class || "—"}</b> | ${c.meta || ""}
-              </div>
-            </td>
-            <td style="width: 52px; text-align: right; vertical-align: middle;">
-              <div class="level-badge">
-                <span class="level-title">УРОВЕНЬ</span>
-                <div class="level-val" id="desc-sync-level">${c.level || "1"}</div>
-              </div>
-            </td>
-          </tr>
-        </table>
-
-        <div class="description-body">
+        <div class="description-body" style="height: 118mm; max-height: 118mm;">
           <div class="desc-avatar-box" onclick="app.openAvatarModal()" title="Нажмите, чтобы загрузить/изменить фото">
             ${avatarPreviewHTML}
           </div>
@@ -430,7 +413,7 @@ class DnDApp {
           </div>
         </div>
 
-        <div style="border-top: 1px dashed #cbd5e1; margin-top: 4px; padding-top: 2px; display: flex; justify-content: space-between; align-items: center; font-size: 6.5pt; color: #94a3b8;">
+        <div style="border-top: 1px dashed #cbd5e1; margin-top: 4px; padding-top: 2px; display: flex; justify-content: space-between; align-items: center; font-size: 6.5pt; color: #94a3b8; flex: 0 0 auto;">
           <span>D&D 5e • Оборотная сторона карточки</span>
           <div style="display: flex; align-items: center; gap: 3px;">
             <span style="font-weight: bold; color: #475569;">Размер шрифта:</span>

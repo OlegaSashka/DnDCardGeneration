@@ -601,7 +601,7 @@ body {
 .desc-card-screen {
   margin-top: 5px;
   margin-bottom: 30px;
-  height: 136mm;
+  height: 125mm;
   max-height: 136mm;
   display: flex;
   flex-direction: column;
@@ -610,11 +610,11 @@ body {
 
 .description-body {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex: 1 1 auto;
   min-height: 0;
-  height: 102mm;
-  max-height: 102mm;
+  height: 118mm;
+  max-height: 118mm;
   box-sizing: border-box;
 }
 
