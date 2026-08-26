@@ -527,16 +527,26 @@ body {
   border-bottom: 1px dotted #e2e8f0;
 }
 
+/* Кнопка удаления строки (крестик) */
 .row-btn {
-  background: none;
+  background: transparent;
   border: none;
   color: #94a3b8;
   cursor: pointer;
-  font-size: 6.5pt;
-  padding: 1px;
+  font-size: 8pt;
+  font-weight: bold;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.row-btn:hover { color: #dc2626; }
+.row-btn:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
 
 .death-saves-box {
   flex: 0 0 auto;

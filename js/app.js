@@ -89,8 +89,8 @@ class DnDApp {
           <td contenteditable="true" data-atk-name="${idx}"><b>${atk.name}</b></td>
           <td contenteditable="true" data-atk-hit="${idx}">${atk.hit}</td>
           <td contenteditable="true" data-atk-dmg="${idx}">${atk.dmg}</td>
-          <td class="no-print" style="width: 15px; text-align:right;">
-            <button class="row-btn" onclick="app.deleteAttack(${idx})" title="Удалить"><i class="fa-solid fa-times"></i></button>
+          <td class="no-print" style="width: 16px; text-align:right;">
+            <button class="row-btn" onclick="app.deleteAttack(${idx})" title="Удалить">✕</button>
           </td>
         </tr>
       `;
@@ -102,7 +102,7 @@ class DnDApp {
       featuresHTML += `
         <li>
           <span contenteditable="true" data-feat="${idx}">${feat}</span>
-          <button class="row-btn no-print" onclick="app.deleteFeature(${idx})" style="margin-left:4px;" title="Удалить"><i class="fa-solid fa-times"></i></button>
+          <button class="row-btn no-print" onclick="app.deleteFeature(${idx})" style="margin-left:4px;" title="Удалить">✕</button>
         </li>
       `;
     });

@@ -1,5 +1,5 @@
 /**
- * Генератор HTML шаблонов карточек с динамическим размером шрифта и выравниванием по ширине
+ * Генератор HTML шаблонов карточек
  */
 export class CardRenderer {
   static getFrontHTML(c) {
@@ -11,13 +11,14 @@ export class CardRenderer {
       </td>
     `).join("");
 
-    const atks = c.attacks.map(atk => `
-      <tr><td style="padding:2px;"><b>${atk.name}</b></td><td style="padding:2px;">${atk.hit}</td><td style="padding:2px;">${atk.dmg}</td></tr>
-    `).join("");
+    const atks = (c.attacks && c.attacks.length > 0)
+      ? c.attacks.map(atk => `<tr><td style="padding:2px;"><b>${atk.name || ""}</b></td><td style="padding:2px;">${atk.hit || ""}</td><td style="padding:2px;">${atk.dmg || ""}</td></tr>`).join("")
+      : "";
 
-    const feats = c.features.map(feat => `<li style="margin-bottom:2px;">${feat}</li>`).join("");
+    const feats = (c.features && c.features.length > 0)
+      ? c.features.map(feat => feat && feat.trim() ? `<li style="margin-bottom:2px;">${feat}</li>` : "").join("")
+      : "";
 
-    // Размеры шрифта из модели персонажа
     const atkFontSize = c.fontSizes?.attacks || 7.5;
     const invFontSize = c.fontSizes?.inventory || 7.5;
     const featFontSize = c.fontSizes?.features || 7.5;
@@ -28,8 +29,12 @@ export class CardRenderer {
           <table style="width:100%; border-collapse:collapse; margin-bottom:3px; background:#fff; color:#0f172a; border:1.5px solid #64748b; border-radius:6px;">
             <tr>
               <td style="padding:3px 5px;">
-                <div style="font-size:11pt; font-weight:bold; color:#0f172a;">${c.name || ""}</div>
-                <div style="font-size:7.5pt; color:#475569;">Раса: <b>${c.race || "—"}</b> | Класс: <b>${c.class || "—"}</b> | ${c.meta || ""}</div>
+                <div style="font-size:11pt; font-weight:bold; color:#0f172a; border-bottom:1.2px solid #94a3b8; min-height:15px; margin-bottom:2px;">${c.name || "&nbsp;"}</div>
+                <div style="font-size:7.5pt; color:#475569; display:flex; gap:8px;">
+                  <span>Раса: <b style="border-bottom:1px solid #cbd5e1; min-width:40px; display:inline-block;">${c.race || "&nbsp;"}</b></span>
+                  <span>Класс: <b style="border-bottom:1px solid #cbd5e1; min-width:40px; display:inline-block;">${c.class || "&nbsp;"}</b></span>
+                  <span style="flex-grow:1; border-bottom:1px solid #cbd5e1; min-width:50px;">${c.meta || "&nbsp;"}</span>
+                </div>
               </td>
               <td style="width:48px; text-align:right; padding:2px 4px; vertical-align:middle;">
                 <div style="border:1.5px solid #64748b; border-radius:5px; background:#f1f5f9; text-align:center; padding:1px 2px; width:44px; margin-left:auto; box-sizing:border-box;">
@@ -50,11 +55,11 @@ export class CardRenderer {
               <td style="width:36%; background:#f8fafc; border:1.5px solid #64748b; border-radius:6px; padding:2px;">
                 <span style="font-size:5.5pt; font-weight:bold; color:#475569; display:block;">ХИТЫ (HP): ТЕК / МАКС (+ДОП)</span>
                 <div style="display:flex; align-items:center; justify-content:center; gap:3px; margin:1px 0;">
-                  <span style="font-size:10pt; font-weight:bold; color:#0f172a; min-width:16px; text-align:center; background:transparent;">${c.hpCur || ""}</span>
+                  <span style="display:inline-block; width:26px; height:16px; border:1.2px solid #94a3b8; background:#fff; border-radius:3px;"></span>
                   <span style="font-size:10pt; font-weight:bold; color:#64748b;">/</span>
                   <span style="font-size:10pt; font-weight:bold; color:#0f172a; min-width:16px; text-align:center;">${c.hpMax || "—"}</span>
                   <span style="font-size:7pt; color:#94a3b8; margin-left:1px;">+</span>
-                  <span style="display:inline-block; min-width:18px; border-bottom:1px dashed #94a3b8; font-size:7.5pt; font-weight:bold; color:#475569; text-align:center;">${c.hpBonus || "&nbsp;&nbsp;&nbsp;"}</span>
+                  <span style="display:inline-block; min-width:18px; border-bottom:1px dashed #94a3b8; font-size:7pt; color:#64748b; text-align:center;">${c.hpBonus || "&nbsp;&nbsp;&nbsp;"}</span>
                 </div>
                 <span style="font-size:4.5pt; color:#94a3b8; display:block;">(Заполняется карандашом)</span>
               </td>
@@ -106,7 +111,7 @@ export class CardRenderer {
     `;
   }
 
-static getBackHTML(c) {
+  static getBackHTML(c) {
     const hasAvatar = Boolean(c.avatar && c.avatar.trim());
     const avatarHTML = hasAvatar ? `
       <div style="width: 30%; height: 120mm; flex-shrink: 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #f8fafc;">
@@ -121,9 +126,7 @@ static getBackHTML(c) {
       <div style="width:194mm; height:134mm; max-height:134mm; overflow:hidden; border:2px solid #334155; border-radius:8px; padding:5px 8px; box-sizing:border-box; font-size:8pt; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1e293b; display:flex; flex-direction:column; justify-content:space-between;">
         <div style="display:flex; gap:8px; flex:1 1 auto; min-height:0; height:120mm; max-height:120mm; overflow:hidden; box-sizing:border-box;">
           ${avatarHTML}
-          <div style="${textWidth} height:120mm; max-height:120mm; overflow:hidden; font-size:${descFontSize}pt; line-height:1.35; color:#334155; white-space:pre-wrap; word-break:break-word; text-align:justify; text-justify:inter-word; border:1px solid #cbd5e1; border-radius:6px; padding:6px 8px; background:#fafafa; box-sizing:border-box;">
-            ${c.description || "<i>Описание и предыстория персонажа не заполнены. Вы можете вписать их вручную.</i>"}
-          </div>
+          <div style="${textWidth} height:120mm; max-height:120mm; overflow:hidden; font-size:${descFontSize}pt; line-height:1.35; color:#334155; white-space:pre-wrap; word-break:break-word; text-align:justify; text-justify:inter-word; border:1px solid #cbd5e1; border-radius:6px; padding:6px 8px; background:#fafafa; box-sizing:border-box;">${c.description || ""}</div>
         </div>
 
         <div style="border-top:1px dashed #cbd5e1; padding-top:2px; display:flex; justify-content:space-between; font-size:5.5pt; color:#94a3b8; flex: 0 0 auto;">
