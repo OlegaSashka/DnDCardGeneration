@@ -24,6 +24,13 @@ export class Character {
     this.avatar = data.avatar || "";
     this.description = data.description || "";
 
+    this.fontSizes = data.fontSizes || {
+      attacks: 7.5,
+      inventory: 7.5,
+      features: 7.5,
+      description: 8.0
+    };
+
     // Режим начисления очков: 'point_buy' (27 очков) или 'free_sum' (72 очка)
     this.budgetMode = data.budgetMode || "point_buy";
     this.maxBudgetPoints = data.maxBudgetPoints || (this.budgetMode === "point_buy" ? "27" : "72");
@@ -67,6 +74,16 @@ export class Character {
     ];
 
     this.recalcDerivedStats();
+  }
+
+  changeFontSize(section, delta) {
+    if (!this.fontSizes) {
+      this.fontSizes = { attacks: 7.5, inventory: 7.5, features: 7.5, description: 8.0 };
+    }
+    const current = parseFloat(this.fontSizes[section]) || 7.5;
+    const next = Math.round((current + delta) * 10) / 10;
+    // Ограничиваем размер от 5pt до 14pt
+    this.fontSizes[section] = Math.max(5, Math.min(14, next));
   }
 
   static calcMod(score) {

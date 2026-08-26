@@ -213,8 +213,8 @@ class DnDApp {
         <div style="display:flex; align-items:center; gap:6px;">
           <span style="font-weight:bold; color:#475569;">Система:</span>
           <select id="budgetModeSelect" onchange="app.changeBudgetMode(this.value)" style="padding:1px 5px; font-size:7.5pt; font-weight:bold; border-radius:4px; border:1px solid #94a3b8; background:#fff; cursor:pointer; color:#0f172a;">
-            <option value="point_buy" ${c.budgetMode === 'point_buy' ? 'selected' : ''}>🎯 Point Buy (27 очк, 8–15)</option>
-            <option value="free_sum" ${c.budgetMode === 'free_sum' ? 'selected' : ''}>📊 Прямая сумма (${c.maxBudgetPoints} очк)</option>
+            <option value="point_buy" ${c.budgetMode === 'point_buy' ? 'selected' : ''}>Point Buy (27 очк, 8–15)</option>
+            <option value="free_sum" ${c.budgetMode === 'free_sum' ? 'selected' : ''}>Прямая сумма (${c.maxBudgetPoints} очк)</option>
           </select>
           <span style="color:#64748b;">| Лимит:</span>
           <span class="max-points-input" contenteditable="true" id="field-max-budget" onblur="app.onMaxBudgetChange()" title="Нажмите, чтобы изменить максимум" style="font-weight:bold; border-bottom:1px dashed #64748b; min-width:20px; text-align:center; display:inline-block; color:#0f172a;">${c.maxBudgetPoints}</span>
@@ -233,11 +233,16 @@ class DnDApp {
       <div class="columns-row">
         <div class="col-left">
           <div class="block-section weapons-section">
-            <div class="block-title">
+            <div class="block-title" style="display:flex; justify-content:space-between; align-items:center;">
               <span>⚔️ Оружие и атаки</span>
-              <button class="add-btn no-print" onclick="app.addAttack()"><i class="fa-solid fa-plus"></i> Добавить</button>
+              <div style="display:flex; align-items:center; gap:2px;">
+                <button class="font-size-btn no-print" onclick="app.changeFontSize('attacks', -0.5)" title="Уменьшить шрифт">A−</button>
+                <span class="font-size-val no-print">${c.fontSizes?.attacks || 7.5}pt</span>
+                <button class="font-size-btn no-print" onclick="app.changeFontSize('attacks', 0.5)" title="Увеличить шрифт">A+</button>
+                <button class="add-btn no-print" onclick="app.addAttack()" style="margin-left:4px;"><i class="fa-solid fa-plus"></i> Добавить</button>
+              </div>
             </div>
-            <table class="compact-table">
+            <table class="compact-table" style="font-size: ${c.fontSizes?.attacks || 7.5}pt;">
               <tr>
                 <th>Оружие</th>
                 <th>Попадание</th>
@@ -262,19 +267,31 @@ class DnDApp {
           </div>
 
           <div class="block-section inventory-section">
-            <div class="block-title">🎒 Снаряжение</div>
-            <div class="inventory-text" contenteditable="true" id="field-inventory" placeholder="Снаряжение, золото, предметы...">${c.inventory || ""}</div>
+            <div class="block-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>🎒 Снаряжение</span>
+              <div style="display:flex; align-items:center; gap:2px;">
+                <button class="font-size-btn no-print" onclick="app.changeFontSize('inventory', -0.5)" title="Уменьшить шрифт">A−</button>
+                <span class="font-size-val no-print">${c.fontSizes?.inventory || 7.5}pt</span>
+                <button class="font-size-btn no-print" onclick="app.changeFontSize('inventory', 0.5)" title="Увеличить шрифт">A+</button>
+              </div>
+            </div>
+            <div class="inventory-text" contenteditable="true" id="field-inventory" placeholder="Снаряжение, золото, предметы..." style="font-size: ${c.fontSizes?.inventory || 7.5}pt;">${c.inventory || ""}</div>
           </div>
         </div>
 
         <div class="col-right">
           <div class="block-section features-section">
-            <div class="block-title">
+            <div class="block-title" style="display:flex; justify-content:space-between; align-items:center;">
               <span>🛡️ Умения и способности</span>
-              <button class="add-btn no-print" onclick="app.addFeature()"><i class="fa-solid fa-plus"></i> Добавить</button>
+              <div style="display:flex; align-items:center; gap:2px;">
+                <button class="font-size-btn no-print" onclick="app.changeFontSize('features', -0.5)" title="Уменьшить шрифт">A−</button>
+                <span class="font-size-val no-print">${c.fontSizes?.features || 7.5}pt</span>
+                <button class="font-size-btn no-print" onclick="app.changeFontSize('features', 0.5)" title="Увеличить шрифт">A+</button>
+                <button class="add-btn no-print" onclick="app.addFeature()" style="margin-left:4px;"><i class="fa-solid fa-plus"></i> Добавить</button>
+              </div>
             </div>
             <div class="features-list-wrapper">
-              <ul class="feature-list">
+              <ul class="feature-list" style="font-size: ${c.fontSizes?.features || 7.5}pt;">
                 ${featuresHTML}
               </ul>
             </div>
@@ -305,6 +322,72 @@ class DnDApp {
 
     const levelEl = document.getElementById("field-level");
     if (levelEl) c.level = levelEl.innerText.trim() || "1";
+
+    container.querySelectorAll('[contenteditable="true"]').forEach(el => {
+      el.addEventListener('input', () => this.saveCurrentDOM());
+      el.addEventListener('paste', (e) => this.handleCleanPaste(e));
+    });
+  }
+
+  handleCleanPaste(e) {
+    e.preventDefault();
+    const html = (e.clipboardData || window.clipboardData).getData('text/html');
+    const plainText = (e.clipboardData || window.clipboardData).getData('text/plain');
+
+    if (!html) {
+      document.execCommand('insertText', false, plainText);
+      return;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    const sanitize = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.cloneNode(true);
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        let targetTag = null;
+
+        if (tag === 'b' || tag === 'strong') targetTag = 'b';
+        else if (tag === 'i' || tag === 'em') targetTag = 'i';
+        else if (tag === 's' || tag === 'strike' || tag === 'del') targetTag = 's';
+        else if (tag === 'br') targetTag = 'br';
+        else if (['p', 'div', 'li'].includes(tag)) targetTag = tag;
+
+        let newEl;
+        if (targetTag) {
+          newEl = document.createElement(targetTag);
+        } else {
+          newEl = document.createDocumentFragment();
+        }
+
+        node.childNodes.forEach(child => {
+          const res = sanitize(child);
+          if (res) newEl.appendChild(res);
+        });
+        return newEl;
+      }
+      return null;
+    };
+
+    const fragment = document.createDocumentFragment();
+    doc.body.childNodes.forEach(child => {
+      const res = sanitize(child);
+      if (res) fragment.appendChild(res);
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(fragment);
+    document.execCommand('insertHTML', false, wrapper.innerHTML);
+  }
+
+  changeFontSize(section, delta) {
+    this.saveCurrentDOM();
+    this.activeCharacter.changeFontSize(section, delta);
+    this.render();
+    this.saveCurrentDOM();
   }
 
   renderDescriptionCard(c) {
@@ -343,13 +426,18 @@ class DnDApp {
             ${avatarPreviewHTML}
           </div>
           <div class="desc-text-wrapper">
-            <div class="description-text" contenteditable="true" id="field-description" placeholder="Здесь можно записать предысторию, внешность, характер, цели или игровые заметки...">${c.description || ""}</div>
+            <div class="description-text" contenteditable="true" id="field-description" placeholder="Здесь можно записать предысторию, внешность, характер, цели или игровые заметки..." style="font-size: ${c.fontSizes?.description || 8.0}pt;">${c.description || ""}</div>
           </div>
         </div>
 
-        <div style="border-top: 1px dashed #cbd5e1; margin-top: 4px; padding-top: 2px; display: flex; justify-content: space-between; font-size: 6.5pt; color: #94a3b8;">
+        <div style="border-top: 1px dashed #cbd5e1; margin-top: 4px; padding-top: 2px; display: flex; justify-content: space-between; align-items: center; font-size: 6.5pt; color: #94a3b8;">
           <span>D&D 5e • Оборотная сторона карточки</span>
-          <span>(Текст и портрет сохраняются автоматически)</span>
+          <div style="display: flex; align-items: center; gap: 3px;">
+            <span style="font-weight: bold; color: #475569;">Размер шрифта:</span>
+            <button class="font-size-btn no-print" onclick="app.changeFontSize('description', -0.5)" title="Уменьшить шрифт">A−</button>
+            <span class="font-size-val no-print">${c.fontSizes?.description || 8.0}pt</span>
+            <button class="font-size-btn no-print" onclick="app.changeFontSize('description', 0.5)" title="Увеличить шрифт">A+</button>
+          </div>
         </div>
       </div>
     `;
@@ -357,6 +445,7 @@ class DnDApp {
     const descTextEl = document.getElementById("field-description");
     if (descTextEl) {
       descTextEl.addEventListener('input', () => this.saveCurrentDOM());
+      descTextEl.addEventListener('paste', (e) => this.handleCleanPaste(e));
     }
   }
 

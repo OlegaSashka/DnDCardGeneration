@@ -750,3 +750,57 @@ body {
 .pdf-mode .no-print {
   display: none !important;
 }
+
+/* Фиксированный шрифт, выравнивание по ширине для боевых и текстовых блоков */
+.inventory-text,
+.feature-list,
+.compact-table,
+.description-text {
+  font-family: inherit !important;
+  text-align: justify;
+  text-justify: inter-word;
+  word-break: break-word;
+}
+
+/* Принудительно сбрасываем чужие шрифты, фоны и размеры внутри блоков,
+   но сохраняем жирность (b), курсив (i) и зачеркивание (s) */
+.inventory-text *,
+.feature-list *,
+.compact-table *,
+.description-text * {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* Компактные кнопки изменения размера шрифта (A- / A+) */
+.font-size-btn {
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  color: #475569;
+  font-size: 6.5pt;
+  font-weight: bold;
+  padding: 0 4px;
+  height: 15px;
+  line-height: 13px;
+  cursor: pointer;
+  margin-right: 2px;
+}
+
+.font-size-btn:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+/* Бейдж с текущим размером шрифта */
+.font-size-val {
+  font-size: 6.5pt;
+  font-weight: bold;
+  color: #475569;
+  min-width: 26px;
+  text-align: center;
+  display: inline-block;
+  user-select: none;
+}
