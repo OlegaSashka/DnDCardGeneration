@@ -114,7 +114,7 @@ export class CardRenderer {
   static getBackHTML(c) {
     const hasAvatar = Boolean(c.avatar && c.avatar.trim());
     const avatarHTML = hasAvatar ? `
-      <div style="width: 30%; height: 120mm; flex-shrink: 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #f8fafc;">
+      <div style="width: 30%; height: 100%; flex-shrink: 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #f8fafc; box-sizing: border-box;">
         <img src="${c.avatar}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="Портрет">
       </div>
     ` : "";
@@ -124,9 +124,9 @@ export class CardRenderer {
 
     return `
       <div style="width:194mm; height:134mm; max-height:134mm; overflow:hidden; border:2px solid #334155; border-radius:8px; padding:5px 8px; box-sizing:border-box; font-size:8pt; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1e293b; display:flex; flex-direction:column; justify-content:space-between;">
-        <div style="display:flex; gap:8px; flex:1 1 auto; min-height:0; height:120mm; max-height:120mm; overflow:hidden; box-sizing:border-box;">
+        <div style="display:flex; gap:8px; flex:1 1 auto; min-height:0; height:100%; overflow:hidden; box-sizing:border-box; margin-bottom:4px;">
           ${avatarHTML}
-          <div style="${textWidth} height:120mm; max-height:120mm; overflow:hidden; font-size:${descFontSize}pt; line-height:1.35; color:#334155; white-space:pre-wrap; word-break:break-word; text-align:justify; text-justify:inter-word; border:1px solid #cbd5e1; border-radius:6px; padding:6px 8px; background:#fafafa; box-sizing:border-box;">${c.description || ""}</div>
+          <div style="${textWidth} height:100%; min-height:0; overflow:hidden; font-size:${descFontSize}pt; line-height:1.35; color:#334155; white-space:pre-wrap; word-break:break-word; text-align:justify; text-justify:inter-word; border:1px solid #cbd5e1; border-radius:6px; padding:6px 8px; background:#fafafa; box-sizing:border-box;">${c.description || ""}</div>
         </div>
 
         <div style="border-top:1px dashed #cbd5e1; padding-top:2px; display:flex; justify-content:space-between; font-size:5.5pt; color:#94a3b8; flex: 0 0 auto;">

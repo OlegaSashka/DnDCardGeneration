@@ -404,7 +404,7 @@ class DnDApp {
 
     descContainer.innerHTML = `
       <div class="card-container desc-card-screen">
-        <div class="description-body" style="height: 118mm; max-height: 118mm;">
+        <div class="description-body">
           <div class="desc-avatar-box" onclick="app.openAvatarModal()" title="Нажмите, чтобы загрузить/изменить фото">
             ${avatarPreviewHTML}
           </div>
