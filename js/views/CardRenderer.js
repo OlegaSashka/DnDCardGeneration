@@ -42,17 +42,17 @@ export class CardRenderer {
                 <span style="font-size:10pt; font-weight:bold; color:#0f172a;">${c.ac || "10"}</span>
                 <span style="font-size:5pt; color:#64748b; display:block;">${c.acSub || ""}</span>
               </td>
-              <td style="width:36%; background:#f8fafc; border:1.5px solid #64748b; border-radius:6px; padding:2px;">
-                <span style="font-size:5.5pt; font-weight:bold; color:#475569; display:block;">ХИТЫ (HP): ТЕК / МАКС (+ВРЕМ)</span>
-                <div style="display:flex; align-items:center; justify-content:center; gap:2px; margin:1px 0;">
-                  <span style="display:inline-block; width:26px; height:16px; border:1.2px solid #94a3b8; background:#fff; border-radius:3px;"></span>
-                  <span style="font-size:10pt; font-weight:bold; color:#64748b;">/</span>
-                  <span style="font-size:10pt; font-weight:bold; color:#0f172a; min-width:16px;">${c.hpMax || "10"}</span>
-                  <span style="font-size:7pt; color:#94a3b8; margin-left:2px;">+</span>
-                  <span style="display:inline-block; min-width:20px; border-bottom:1px dashed #94a3b8; font-size:7pt; color:#64748b;">${c.hpBonus || ""}</span>
-                </div>
-                <span style="font-size:4.5pt; color:#94a3b8; display:block;">(Тек. пишется карандашом)</span>
-              </td>
+                <td style="width:36%; background:#f8fafc; border:1.5px solid #64748b; border-radius:6px; padding:2px;">
+                  <span style="font-size:5.5pt; font-weight:bold; color:#475569; display:block;">ХИТЫ (HP): ТЕК / МАКС (+ДОП)</span>
+                  <div style="display:flex; align-items:center; justify-content:center; gap:3px; margin:1px 0;">
+                    <span style="font-size:10pt; font-weight:bold; color:#0f172a; min-width:16px; text-align:center; background:transparent;">${c.hpCur || ""}</span>
+                    <span style="font-size:10pt; font-weight:bold; color:#64748b;">/</span>
+                    <span style="font-size:10pt; font-weight:bold; color:#0f172a; min-width:16px; text-align:center;">${c.hpMax || "—"}</span>
+                    <span style="font-size:7pt; color:#94a3b8; margin-left:1px;">+</span>
+                    <span style="display:inline-block; min-width:18px; border-bottom:1px dashed #94a3b8; font-size:7.5pt; font-weight:bold; color:#475569; text-align:center;">${c.hpBonus || "&nbsp;&nbsp;&nbsp;"}</span>
+                  </div>
+                  <span style="font-size:4.5pt; color:#94a3b8; display:block;">(Заполняется карандашом)</span>
+                </td>
               <td style="width:12%; background:#f8fafc; border:1.5px solid #64748b; border-radius:6px; padding:2px;">
                 <span style="font-size:5.5pt; font-weight:bold; color:#475569; display:block;">СКОРОСТЬ</span>
                 <span style="font-size:10pt; font-weight:bold; color:#0f172a;">${c.speed || "30 фт"}</span>
