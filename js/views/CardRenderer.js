@@ -28,7 +28,7 @@ export class CardRenderer {
           <table style="width:100%; border-collapse:collapse; margin-bottom:3px; background:#fff; color:#0f172a; border:1.5px solid #64748b; border-radius:6px;">
             <tr>
               <td style="padding:3px 5px;">
-                <div style="font-size:11pt; font-weight:bold; color:#0f172a;">${c.name || "ИМЯ ПЕРСОНАЖА"}</div>
+                <div style="font-size:11pt; font-weight:bold; color:#0f172a;">${c.name || ""}</div>
                 <div style="font-size:7.5pt; color:#475569;">Раса: <b>${c.race || "—"}</b> | Класс: <b>${c.class || "—"}</b> | ${c.meta || ""}</div>
               </td>
               <td style="width:48px; text-align:right; padding:2px 4px; vertical-align:middle;">

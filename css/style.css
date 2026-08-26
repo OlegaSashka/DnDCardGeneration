@@ -744,11 +744,20 @@ body {
 
 /* Скрытие для печати */
 @media print {
-  .no-print { display: none !important; }
+  .no-print {
+    display: none !important;
+  }
+  [contenteditable="true"]:empty:before {
+    content: "" !important;
+  }
 }
 
 .pdf-mode .no-print {
   display: none !important;
+}
+
+.pdf-mode [contenteditable="true"]:empty:before {
+  content: "" !important;
 }
 
 /* Фиксированный шрифт, выравнивание по ширине для боевых и текстовых блоков */
