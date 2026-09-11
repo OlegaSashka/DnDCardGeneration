@@ -5,26 +5,49 @@ import { PDFExporter } from './services/PDFExporter.js';
 class DnDApp {
   constructor() {
     this.characters = [];
-    this.currentIndex = 0;
+    this.activeCharId = localStorage.getItem("dnd_active_char_id") || null;
     this.autoSaveTimer = null;
   }
 
   async init() {
     this.characters = await CharacterAPI.loadAll();
+
     if (this.characters.length === 0) {
-      this.addNewCharacter();
+      await this.addNewCharacter();
     } else {
-      const savedIndex = localStorage.getItem("dnd_active_index");
-      if (savedIndex !== null && Number(savedIndex) < this.characters.length) {
-        this.currentIndex = Number(savedIndex);
+      // Проверяем, существует ли сохранённый ID среди загруженных персонажей
+      const savedId = localStorage.getItem("dnd_active_char_id");
+      const exists = this.characters.some(c => c.id === savedId);
+
+      if (savedId && exists) {
+        this.activeCharId = savedId;
+      } else {
+        // Если ID не найден или карточка была удалена — выбираем первого
+        this.setActiveCharacter(this.characters[0].id);
       }
       this.render();
     }
     this.bindGlobalEvents();
   }
 
+// Находим активного персонажа строго по уникальному ID
   get activeCharacter() {
-    return this.characters[this.currentIndex] || null;
+    if (!this.characters || this.characters.length === 0) return null;
+    const found = this.characters.find(c => c.id === this.activeCharId);
+    return found || this.characters[0];
+  }
+
+  get currentIndex() {
+    if (!this.characters || this.characters.length === 0) return 0;
+    const idx = this.characters.findIndex(c => c.id === this.activeCharId);
+    return idx !== -1 ? idx : 0;
+  }
+
+  setActiveCharacter(id) {
+    this.activeCharId = id;
+    localStorage.setItem("dnd_active_char_id", id);
+    // Удаляем старый числовой ключ, чтобы он не конфликтовал
+    localStorage.removeItem("dnd_active_index");
   }
 
   changeLevel(delta) {
@@ -44,14 +67,20 @@ class DnDApp {
     if (!tabsList) return;
     tabsList.innerHTML = "";
 
-    this.characters.forEach((char, idx) => {
+    const activeChar = this.activeCharacter;
+    if (!activeChar) return;
+
+    this.characters.forEach((char) => {
       const btn = document.createElement("button");
-      btn.className = `tab-btn ${idx === this.currentIndex ? 'active' : ''}`;
-      btn.id = `tab-btn-${idx}`;
+      const isActive = char.id === activeChar.id;
+      btn.className = `tab-btn ${isActive ? 'active' : ''}`;
+      btn.id = `tab-btn-${char.id}`;
       btn.innerHTML = `<i class="fa-solid fa-shield-halved"></i> <span>${char.tabTitle}</span>`;
+
       btn.onclick = () => {
-        this.saveCurrentDOM();
-        this.currentIndex = idx;
+        if (this.activeCharId === char.id) return;
+        this.saveCurrentDOM(); // Сохраняем текущие правки перед переходом
+        this.setActiveCharacter(char.id); // Фиксируем ID в localStorage мгновенно
         this.render();
       };
       tabsList.appendChild(btn);
@@ -466,7 +495,7 @@ class DnDApp {
     c.hpCur = curHpEl ? curHpEl.innerText.replace(/[^0-9]/g, '') : "";
     c.hpBonus = bonusHpEl ? bonusHpEl.innerText.replace(/[^0-9]/g, '') : "";
 
-    const activeTabSpan = document.querySelector(`#tab-btn-${this.currentIndex} span`);
+    const activeTabSpan = document.querySelector(`#tab-btn-${c.id} span`);
     if (activeTabSpan) activeTabSpan.innerText = c.tabTitle;
 
     const syncName = document.getElementById("desc-sync-name");
@@ -496,7 +525,10 @@ class DnDApp {
 
     c.recalcDerivedStats();
 
-    localStorage.setItem("dnd_active_index", this.currentIndex.toString());
+    // Гарантируем актуальность ID в хранилище:
+    localStorage.setItem("dnd_active_char_id", c.id);
+    localStorage.removeItem("dnd_active_index");
+
     this.debouncedAutoSave();
   }
 
@@ -581,7 +613,7 @@ class DnDApp {
     this.saveCurrentDOM();
     const newHero = new Character({ name: "", level: "1" });
     this.characters.push(newHero);
-    this.currentIndex = this.characters.length - 1;
+    this.setActiveCharacter(newHero.id); // Сразу делаем созданного героя активным
     this.render();
     await CharacterAPI.saveAll(this.characters);
     this.showToast("Создан новый герой!");
@@ -593,12 +625,16 @@ class DnDApp {
 
     if (confirm(`Удалить карточку «${target.name || 'Герой'}»?`)) {
       await CharacterAPI.deleteCharacter(target.id);
-      this.characters.splice(this.currentIndex, 1);
-      this.currentIndex = Math.max(0, this.currentIndex - 1);
+
+      const targetIdx = this.characters.findIndex(c => c.id === target.id);
+      this.characters.splice(targetIdx, 1);
 
       if (this.characters.length === 0) {
         await this.addNewCharacter();
       } else {
+        // Переключаемся на соседнего персонажа
+        const nextIdx = Math.max(0, targetIdx - 1);
+        this.setActiveCharacter(this.characters[nextIdx].id);
         this.render();
         await CharacterAPI.saveAll(this.characters);
         this.showToast("Карточка удалена.");
