@@ -1,6 +1,8 @@
 /**
  * Модель данных одного персонажа D&D 5e с автоматическим расчетом параметров
  */
+import { DND_RACES } from '../data/racesData.js';
+
 export class Character {
   // Официальная таблица стоимости характеристик в Point Buy
   static POINT_BUY_COSTS = {
@@ -52,15 +54,26 @@ export class Character {
     this.extraVal = data.extraVal || "□";
     this.extraSub = data.extraSub || "Переброс d20";
 
-    const defaultScore = this.budgetMode === "point_buy" ? "8" : "12";
-    this.abilities = data.abilities || [
-      { name: "СИЛА", mod: "-1", score: defaultScore },
-      { name: "ЛОВКОСТЬ", mod: "-1", score: defaultScore },
-      { name: "ТЕЛОСЛОЖ.", mod: "-1", score: defaultScore },
-      { name: "ИНТЕЛЛЕКТ", mod: "-1", score: defaultScore },
-      { name: "МУДРОСТЬ", mod: "-1", score: defaultScore },
-      { name: "ХАРИЗМА", mod: "-1", score: defaultScore }
+  const defaultScore = this.budgetMode === "point_buy" ? "8" : "12";
+    const rawAbilities = data.abilities || [
+      { name: "СИЛА", score: defaultScore },
+      { name: "ЛОВКОСТЬ", score: defaultScore },
+      { name: "ТЕЛОСЛОЖ.", score: defaultScore },
+      { name: "ИНТЕЛЛЕКТ", score: defaultScore },
+      { name: "МУДРОСТЬ", score: defaultScore },
+      { name: "ХАРИЗМА", score: defaultScore }
     ];
+
+    this.abilities = rawAbilities.map(ab => {
+      const base = ab.baseScore !== undefined ? ab.baseScore : (ab.score || defaultScore);
+      return {
+        name: ab.name,
+        baseScore: base.toString(),
+        score: ab.score || base.toString(),
+        mod: ab.mod || "+0",
+        raceBonus: 0
+      };
+    });
 
     this.attacks = data.attacks || [
       { name: "Оружие", hit: "d20 + 2", dmg: "1d6 + 0" }
@@ -69,11 +82,45 @@ export class Character {
     this.deathSuccess = data.deathSuccess || 0;
     this.deathFail = data.deathFail || 0;
     this.inventory = data.inventory || "Стандартный походный набор, 10 gp.";
-    this.features = data.features || [
-      "<b>Черта/Способность:</b> Описание способности."
-    ];
 
+    // Изолированные категории умений
+    this.raceFeatures = data.raceFeatures || {};   // Словарь: key -> html (от расы)
+    this.classFeatures = data.classFeatures || {}; // Словарь: key -> html (от класса)
+
+    if (data.customFeatures) {
+      this.customFeatures = data.customFeatures;
+    } else if (Array.isArray(data.features)) {
+      // Миграция старых данных: оставляем только пользовательские умения
+      this.customFeatures = data.features.filter(f => !f.includes("<!--id:"));
+    } else {
+      this.customFeatures = [
+        "<b>Черта/Способность:</b> Описание способности."
+      ];
+    }
+
+    this.syncRaceTraits();
     this.recalcDerivedStats();
+  }
+
+  get features() {
+    return [
+      ...Object.values(this.raceFeatures || {}),
+      ...Object.values(this.classFeatures || {}),
+      ...(this.customFeatures || [])
+    ];
+  }
+
+  getRaceStatBonus(abilityName) {
+    const raceCfg = this.getRaceConfig();
+    if (!raceCfg || !raceCfg.stats) return 0;
+
+    const clean = (abilityName || "").trim().toUpperCase();
+    for (const [statKey, bonus] of Object.entries(raceCfg.stats)) {
+      if (clean.startsWith(statKey.substring(0, 3)) || statKey.startsWith(clean.substring(0, 3))) {
+        return bonus;
+      }
+    }
+    return 0;
   }
 
   changeFontSize(section, delta) {
@@ -109,9 +156,97 @@ export class Character {
     return Character.calcMod(score);
   }
 
+  getRaceConfig() {
+    if (!this.race) return null;
+    const cleanRace = this.race.trim().toLowerCase();
+    for (const [key, cfg] of Object.entries(DND_RACES)) {
+      if (cleanRace.includes(key.toLowerCase()) || key.toLowerCase().includes(cleanRace)) {
+        return cfg;
+      }
+    }
+    return null;
+  }
+
+  upsertFeature(key, htmlText) {
+    const marker = `<!--id:${key}-->`;
+    const existingIdx = this.features.findIndex(f => f && f.includes(marker));
+
+    if (!htmlText) {
+      // Если уровень понизился и способность больше недоступна — удаляем
+      if (existingIdx !== -1) {
+        this.features.splice(existingIdx, 1);
+      }
+      return;
+    }
+
+    const payload = `${marker}${htmlText}`;
+
+    if (existingIdx !== -1) {
+      // Обновляем урон / СЛ на месте без дублирования
+      this.features[existingIdx] = payload;
+    } else {
+      // Удаляем дефолтную заглушку, если она всё ещё висит
+      if (this.features.length === 1 && this.features[0].includes("Черта/Способность")) {
+        this.features = [];
+      }
+      this.features.push(payload);
+    }
+  }
+
+  syncRaceTraits() {
+    const raceCfg = this.getRaceConfig();
+
+    // 1. Полная очистка умений предыдущей расы
+    this.raceFeatures = {};
+
+    if (!raceCfg) {
+      this.recalcDerivedStats();
+      return;
+    }
+
+    // 2. Обновление скорости расы
+    if (raceCfg.speed) this.speed = raceCfg.speed;
+    if (raceCfg.speedSub) this.speedSub = raceCfg.speedSub;
+
+    const lvl = Math.max(1, parseInt(this.level, 10) || 1);
+    const conMod = this.getAbilityNumMod("ТЕЛО");
+    const profBonus = Math.floor((lvl - 1) / 4) + 2;
+
+    // 3. Запись постоянных черт новой расы
+    if (raceCfg.baseFeatures) {
+      Object.entries(raceCfg.baseFeatures).forEach(([key, html]) => {
+        this.raceFeatures[key] = html;
+      });
+    }
+
+    // 4. Запись масштабируемых черт под текущий уровень
+    if (raceCfg.scalingFeatures) {
+      Object.entries(raceCfg.scalingFeatures).forEach(([key, resolver]) => {
+        const text = resolver(lvl, conMod, profBonus);
+        if (text) {
+          this.raceFeatures[key] = text;
+        }
+      });
+    }
+
+    this.recalcDerivedStats();
+  }
+
   recalcDerivedStats() {
     this.abilities.forEach(ab => {
-      const modNum = Character.calcMod(ab.score);
+      const bonus = this.getRaceStatBonus(ab.name);
+      ab.raceBonus = bonus;
+
+      const rawBase = ab.baseScore !== undefined ? ab.baseScore : ab.score;
+      const parsedBase = parseInt(rawBase, 10);
+      const defaultFloor = this.budgetMode === "point_buy" ? 8 : 0;
+      const base = !isNaN(parsedBase) ? parsedBase : defaultFloor;
+      ab.baseScore = base.toString();
+
+      // Итоговое значение: База + Раса
+      const total = base + bonus;
+      ab.score = total.toString();
+      const modNum = Character.calcMod(total);
       ab.mod = Character.formatMod(modNum);
     });
 
@@ -125,15 +260,70 @@ export class Character {
     const totalAC = 10 + dexMod + (parseInt(this.armorBonus, 10) || 0);
     this.ac = totalAC.toString();
 
+    const raceCfg = this.getRaceConfig();
+    const raceHpBonus = (raceCfg?.hpPerLevel || 0) * lvl;
+
     const baseHp = parseInt(this.baseHpDice, 10) || 8;
     const avgGain = Math.floor(baseHp / 2) + 1;
     const extra = parseInt(this.hpMaxExtra, 10) || 0;
 
     const calculatedMax = Math.max(
       1,
-      baseHp + (avgGain * (lvl - 1)) + (conMod * lvl) + extra
+      baseHp + (avgGain * (lvl - 1)) + (conMod * lvl) + raceHpBonus + extra
     );
     this.hpMax = calculatedMax.toString();
+  }
+
+changeAbilityScore(idx, delta) {
+    const ab = this.abilities[idx];
+    const bonus = this.getRaceStatBonus(ab.name);
+
+    let curBase = parseInt(ab.baseScore, 10);
+    if (isNaN(curBase)) {
+      curBase = this.budgetMode === "point_buy" ? 8 : 0;
+    }
+    const nextBase = curBase + delta;
+
+    if (this.budgetMode === "point_buy") {
+      if (delta > 0 && curBase >= 15) {
+        const maxWithRace = 15 + bonus;
+        return {
+          error: bonus > 0
+            ? `Максимум покупки — 15 (итоговый с расой: ${maxWithRace})`
+            : "Максимум покупки в Point Buy — 15"
+        };
+      }
+      if (delta < 0 && curBase <= 8) {
+        const minWithRace = 8 + bonus;
+        return {
+          error: bonus > 0
+            ? `Минимум покупки — 8 (итоговый с расой: ${minWithRace})`
+            : "Минимум покупки в Point Buy — 8"
+        };
+      }
+      const curCost = Character.getPointBuyCost(curBase);
+      const nextCost = Character.getPointBuyCost(nextBase);
+      const costDiff = nextCost - curCost;
+
+      if (delta > 0 && this.remainingPoints < costDiff) {
+        return { error: `Не хватает очков! Нужно: ${costDiff}, осталось: ${this.remainingPoints}` };
+      }
+    } else {
+      // Режим прямой суммы (free_sum)
+      if (delta > 0 && nextBase > 30) {
+        return { error: "Максимальное базовое значение — 30" };
+      }
+      if (delta < 0 && nextBase < 0) {
+        return { error: "Минимум в прямой сумме — 0" };
+      }
+      if (delta > 0 && this.remainingPoints < delta) {
+        return { error: `Лимит очков (${this.maxBudgetPoints}) исчерпан!` };
+      }
+    }
+
+    ab.baseScore = nextBase.toString();
+    this.recalcDerivedStats();
+    return { success: true };
   }
 
   setBudgetMode(mode) {
@@ -142,10 +332,10 @@ export class Character {
     if (mode === "point_buy") {
       this.maxBudgetPoints = "27";
       this.abilities.forEach(ab => {
-        let sc = parseInt(ab.score, 10) || 8;
+        let sc = parseInt(ab.baseScore, 10) || 8;
         if (sc < 8) sc = 8;
         if (sc > 15) sc = 15;
-        ab.score = sc.toString();
+        ab.baseScore = sc.toString();
       });
     } else {
       this.maxBudgetPoints = "72";
@@ -153,41 +343,19 @@ export class Character {
     this.recalcDerivedStats();
   }
 
-  changeAbilityScore(idx, delta) {
-    let cur = parseInt(this.abilities[idx].score, 10);
-    if (isNaN(cur)) cur = this.budgetMode === "point_buy" ? 8 : 10;
-    const next = cur + delta;
-
+  get spentPoints() {
     if (this.budgetMode === "point_buy") {
-      if (delta > 0 && cur >= 15) {
-        return { error: "В Point Buy максимум 15 на 1-м уровне" };
-      }
-      if (delta < 0 && cur <= 8) {
-        return { error: "Минимум в Point Buy — 8" };
-      }
-      const curCost = Character.getPointBuyCost(cur);
-      const nextCost = Character.getPointBuyCost(next);
-      const costDiff = nextCost - curCost;
-
-      if (delta > 0 && this.remainingPoints < costDiff) {
-        return { error: `Не хватает очков! Нужно: ${costDiff}, осталось: ${this.remainingPoints}` };
-      }
-    } else {
-      // Режим прямой суммы (free_sum)
-      if (delta > 0 && cur >= 30) {
-        return { error: "Максимальное значение характеристики — 30" };
-      }
-      if (delta < 0 && cur <= 1) {
-        return { error: "Минимальное значение характеристики — 1" };
-      }
-      if (delta > 0 && this.remainingPoints < delta) {
-        return { error: `Лимит очков (${this.maxBudgetPoints}) исчерпан!` };
-      }
+      return this.abilities.reduce((sum, ab) => {
+        const base = parseInt(ab.baseScore, 10);
+        const safeBase = !isNaN(base) ? base : 8;
+        return sum + Character.getPointBuyCost(safeBase);
+      }, 0);
     }
-
-    this.abilities[idx].score = next.toString();
-    this.recalcDerivedStats();
-    return { success: true };
+    // Прямая сумма: считаем строго чистые очки игрока без учета бонуса расы
+    return this.abilities.reduce((sum, ab) => {
+      const base = parseInt(ab.baseScore, 10);
+      return sum + (!isNaN(base) ? base : 0);
+    }, 0);
   }
 
   changeArmorBonus(delta) {
@@ -215,15 +383,6 @@ export class Character {
   resetHPMax() {
     this.hpMaxExtra = 0;
     this.recalcDerivedStats();
-  }
-
-  get spentPoints() {
-    if (this.budgetMode === "point_buy") {
-      return this.abilities.reduce((sum, ab) => {
-        return sum + Character.getPointBuyCost(ab.score);
-      }, 0);
-    }
-    return this.abilities.reduce((sum, ab) => sum + (parseInt(ab.score, 10) || 0), 0);
   }
 
   get maxBudget() {

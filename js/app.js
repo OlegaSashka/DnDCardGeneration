@@ -1,6 +1,7 @@
 import { Character } from './models/Character.js';
 import { CharacterAPI } from './services/CharacterAPI.js';
 import { PDFExporter } from './services/PDFExporter.js';
+import { DND_RACES } from './data/racesData.js';
 
 class DnDApp {
   constructor() {
@@ -11,6 +12,11 @@ class DnDApp {
 
   async init() {
     this.characters = await CharacterAPI.loadAll();
+
+    if (this.activeCharacter) {
+      this.activeCharacter.syncRaceTraits();
+    }
+    this.render();
 
     if (this.characters.length === 0) {
       await this.addNewCharacter();
@@ -28,6 +34,37 @@ class DnDApp {
       this.render();
     }
     this.bindGlobalEvents();
+  }
+
+  addFeature() {
+    this.saveCurrentDOM();
+    if (!this.activeCharacter.customFeatures) {
+      this.activeCharacter.customFeatures = [];
+    }
+    this.activeCharacter.customFeatures.push("<b>Новая способность:</b> Текст умения.");
+    this.renderActiveCard();
+  }
+
+  deleteFeature(type, id) {
+    this.saveCurrentDOM();
+    const c = this.activeCharacter;
+    if (type === 'race' && c.raceFeatures) {
+      delete c.raceFeatures[id];
+    } else if (type === 'class' && c.classFeatures) {
+      delete c.classFeatures[id];
+    } else if (type === 'custom' && c.customFeatures) {
+      c.customFeatures.splice(id, 1);
+    }
+    this.renderActiveCard();
+  }
+
+  changeRace(newRace) {
+    this.saveCurrentDOM();
+    this.activeCharacter.race = newRace;
+    this.activeCharacter.syncRaceTraits();
+    this.render();
+    this.saveCurrentDOM();
+    this.showToast(`Раса изменена: ${newRace}`);
   }
 
 // Находим активного персонажа строго по уникальному ID
@@ -53,6 +90,7 @@ class DnDApp {
   changeLevel(delta) {
     this.saveCurrentDOM();
     this.activeCharacter.changeLevel(delta);
+    this.activeCharacter.syncRaceTraits(); // Пересчитываем урон дыхания/заклинания расы
     this.render();
     this.saveCurrentDOM();
   }
@@ -102,9 +140,9 @@ class DnDApp {
           <div class="ability-name" contenteditable="true" data-field="ab-name-${idx}">${ab.name}</div>
           <div class="ability-mod" id="ab-mod-val-${idx}">${ab.mod}</div>
           <div class="ability-score-row" style="display:flex; align-items:center; justify-content:center; gap:2px;">
-            <button class="stat-btn no-print" onclick="app.changeAbility(${idx}, -1)" title="Уменьшить" style="cursor:pointer; width:18px; height:18px; padding:0; line-height:1;">−</button>
-            <span class="ability-score-badge" style="min-width:18px; font-weight:bold;">${ab.score || "10"}</span>
-            <button class="stat-btn no-print" onclick="app.changeAbility(${idx}, 1)" title="Увеличить" style="cursor:pointer; width:18px; height:18px; padding:0; line-height:1;">+</button>
+            <button class="stat-btn no-print" onclick="app.changeAbility(${idx}, -1)" title="Уменьшить (База: ${ab.baseScore})" style="cursor:pointer; width:18px; height:18px; padding:0; line-height:1;">−</button>
+            <span class="ability-score-badge" title="Итого: ${ab.score} (База: ${ab.baseScore}${ab.raceBonus ? ' + ' + ab.raceBonus + ' раса' : ''})" style="min-width:18px; font-weight:bold; ${ab.raceBonus ? 'color:#1d4ed8;' : ''}">${ab.score || "10"}</span>
+            <button class="stat-btn no-print" onclick="app.changeAbility(${idx}, 1)" title="Увеличить (База: ${ab.baseScore})" style="cursor:pointer; width:18px; height:18px; padding:0; line-height:1;">+</button>
           </div>
         </td>
       `;
@@ -125,13 +163,35 @@ class DnDApp {
       `;
     });
 
-    // 3. Умения
+    // 3. Умения (Расовые, Классовые, Пользовательские / Gemini)
     let featuresHTML = "";
-    c.features.forEach((feat, idx) => {
+
+    // А. Расовые способности (ключ словаря)
+    Object.entries(c.raceFeatures || {}).forEach(([key, feat]) => {
       featuresHTML += `
         <li>
-          <span contenteditable="true" data-feat="${idx}">${feat}</span>
-          <button class="row-btn no-print" onclick="app.deleteFeature(${idx})" style="margin-left:4px;" title="Удалить">✕</button>
+          <span contenteditable="true" data-feat-type="race" data-feat-key="${key}">${feat}</span>
+          <button class="row-btn no-print" onclick="app.deleteFeature('race', '${key}')" style="margin-left:4px;" title="Удалить">✕</button>
+        </li>
+      `;
+    });
+
+    // Б. Классовые способности (задел под систему классов)
+    Object.entries(c.classFeatures || {}).forEach(([key, feat]) => {
+      featuresHTML += `
+        <li>
+          <span contenteditable="true" data-feat-type="class" data-feat-key="${key}">${feat}</span>
+          <button class="row-btn no-print" onclick="app.deleteFeature('class', '${key}')" style="margin-left:4px;" title="Удалить">✕</button>
+        </li>
+      `;
+    });
+
+    // В. Пользовательские умения / Gemini (индекс массива)
+    (c.customFeatures || []).forEach((feat, idx) => {
+      featuresHTML += `
+        <li>
+          <span contenteditable="true" data-feat-type="custom" data-feat-idx="${idx}">${feat}</span>
+          <button class="row-btn no-print" onclick="app.deleteFeature('custom', ${idx})" style="margin-left:4px;" title="Удалить">✕</button>
         </li>
       `;
     });
@@ -163,9 +223,12 @@ class DnDApp {
               <div class="header-bottom-row">
                 <div class="field-group">
                   <span class="field-lbl">Раса:</span>
-                  <div class="line-input meta-input" contenteditable="true" id="field-race" placeholder="Раса">${c.race || ""}</div>
+                  <select class="line-input meta-input" id="field-race" onchange="app.changeRace(this.value)" style="border: none; border-bottom: 1.2px solid #94a3b8; background: transparent; font-size: 7.5pt; font-weight: bold; color: #0f172a; outline: none; cursor: pointer; padding: 0 2px; height: 16px;">
+                    ${Object.keys(DND_RACES).map(raceName => `
+                      <option value="${raceName}" ${c.race === raceName ? 'selected' : ''}>${raceName}</option>
+                    `).join('')}
+                  </select>
                 </div>
-
                 <div class="field-group">
                   <span class="field-lbl">Класс:</span>
                   <div class="line-input meta-input" contenteditable="true" id="field-class" placeholder="Класс">${c.class || ""}</div>
@@ -489,6 +552,11 @@ class DnDApp {
     c.extraSub = getVal("field-extraSub");
     c.inventory = getVal("field-inventory");
     
+    const raceSelect = document.getElementById("field-race");
+    if (raceSelect) {
+      c.race = raceSelect.value;
+    }
+
     const curHpEl = document.getElementById("field-hp-cur");
     const bonusHpEl = document.getElementById("field-hp-bonus");
 
@@ -521,7 +589,27 @@ class DnDApp {
 
     const feats = [];
     document.querySelectorAll(`[data-feat]`).forEach(el => feats.push(el.innerHTML.trim()));
-    c.features = feats;
+
+    // Сохранение правок текста по изолированным категориям
+    document.querySelectorAll('[data-feat-type="race"]').forEach(el => {
+      const key = el.getAttribute('data-feat-key');
+      if (c.raceFeatures && c.raceFeatures[key] !== undefined) {
+        c.raceFeatures[key] = el.innerHTML.trim();
+      }
+    });
+
+    document.querySelectorAll('[data-feat-type="class"]').forEach(el => {
+      const key = el.getAttribute('data-feat-key');
+      if (c.classFeatures && c.classFeatures[key] !== undefined) {
+        c.classFeatures[key] = el.innerHTML.trim();
+      }
+    });
+
+    const custom = [];
+    document.querySelectorAll('[data-feat-type="custom"]').forEach(el => {
+      custom.push(el.innerHTML.trim());
+    });
+    c.customFeatures = custom;
 
     c.recalcDerivedStats();
 
@@ -651,18 +739,6 @@ class DnDApp {
   deleteAttack(idx) {
     this.saveCurrentDOM();
     this.activeCharacter.attacks.splice(idx, 1);
-    this.renderActiveCard();
-  }
-
-  addFeature() {
-    this.saveCurrentDOM();
-    this.activeCharacter.features.push("<b>Новая способность:</b> Текст умения.");
-    this.renderActiveCard();
-  }
-
-  deleteFeature(idx) {
-    this.saveCurrentDOM();
-    this.activeCharacter.features.splice(idx, 1);
     this.renderActiveCard();
   }
 
