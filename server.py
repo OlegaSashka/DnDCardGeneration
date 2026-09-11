@@ -78,6 +78,8 @@ class DnDHandler(SimpleHTTPRequestHandler):
             self.handle_save_all()
         elif self.path == '/api/delete-character':
             self.handle_delete_character()
+        elif self.path == '/api/catalog/weapon':
+            self.handle_save_catalog_weapon()
         else:
             self.send_error(404, "Not Found")
 
@@ -86,6 +88,8 @@ class DnDHandler(SimpleHTTPRequestHandler):
             self.handle_get_characters()
         elif self.path == '/api/auth/me':
             self.handle_auth_check()
+        elif self.path == '/api/catalog':
+            self.handle_get_catalog()
         else:
             super().do_GET()
 
