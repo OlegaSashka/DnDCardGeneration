@@ -125,6 +125,21 @@ class DnDApp {
     });
   }
 
+  changeInitBonus(delta) {
+    this.saveCurrentDOM();
+    this.activeCharacter.changeInitBonus(delta);
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+  }
+
+  resetInit() {
+    this.saveCurrentDOM();
+    this.activeCharacter.resetInit(); // Вызываем сброс бонуса в модели
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+    this.showToast("Инициатива сброшена к базовой (от Ловкости)!");
+  }
+
   renderActiveCard() {
     const c = this.activeCharacter;
     const container = document.getElementById("activeCardRender");
@@ -288,7 +303,11 @@ class DnDApp {
 
           <td class="stat-badge" style="width: 14%;">
             <span class="stat-badge-title">Инициатива</span>
-            <span class="stat-badge-val" onclick="app.resetInit()" title="Клик: пересчитать от Ловкости" style="cursor:pointer; font-weight:bold; user-select:none;">${c.init}</span>
+            <div style="display:flex; align-items:center; justify-content:center; gap:2px; margin:1px 0;">
+              <button class="stat-btn no-print" onclick="app.changeInitBonus(-1)" title="Уменьшить инициативу" style="cursor:pointer; width:16px; height:16px; padding:0; line-height:1;">−</button>
+              <span class="stat-badge-val" onclick="app.resetInit()" title="Клик: сбросить к базовой (от Ловкости)" style="cursor:pointer; font-weight:bold; min-width:20px; user-select:none;">${c.init}</span>
+              <button class="stat-btn no-print" onclick="app.changeInitBonus(1)" title="Увеличить инициативу (+1)" style="cursor:pointer; width:16px; height:16px; padding:0; line-height:1;">+</button>
+            </div>
             <span class="stat-badge-sub" id="field-initSub">${c.initSub}</span>
           </td>
 
@@ -673,14 +692,6 @@ class DnDApp {
     this.renderActiveCard();
     this.saveCurrentDOM();
     this.showToast("Макс. HP сброшены к формуле (8 + Тел × Ур)!");
-  }
-
-  resetInit() {
-    this.saveCurrentDOM();
-    this.activeCharacter.recalcDerivedStats();
-    this.renderActiveCard();
-    this.saveCurrentDOM();
-    this.showToast("Инициатива пересчитана от Ловкости!");
   }
 
   onMaxBudgetChange() {

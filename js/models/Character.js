@@ -26,6 +26,9 @@ export class Character {
     this.avatar = data.avatar || "";
     this.description = data.description || "";
 
+    // Бонус инициативы (для черт, заклинаний и ручной подстройки)
+    this.initBonus = data.initBonus !== undefined ? parseInt(data.initBonus, 10) : 0;
+
     this.fontSizes = data.fontSizes || {
       attacks: 7.5,
       inventory: 7.5,
@@ -254,8 +257,9 @@ export class Character {
     const conMod = this.getAbilityNumMod("ТЕЛО");
     const lvl = Math.max(1, parseInt(this.level, 10) || 1);
 
-    this.init = Character.formatMod(dexMod);
-    this.initSub = dexMod >= 0 ? `d20+${dexMod}` : `d20${dexMod}`;
+    const totalInit = dexMod + (parseInt(this.initBonus, 10) || 0);
+    this.init = Character.formatMod(totalInit);
+    this.initSub = totalInit >= 0 ? `d20+${totalInit}` : `d20${totalInit}`;
 
     const totalAC = 10 + dexMod + (parseInt(this.armorBonus, 10) || 0);
     this.ac = totalAC.toString();
@@ -274,7 +278,17 @@ export class Character {
     this.hpMax = calculatedMax.toString();
   }
 
-changeAbilityScore(idx, delta) {
+  changeInitBonus(delta) {
+    this.initBonus = (parseInt(this.initBonus, 10) || 0) + delta;
+    this.recalcDerivedStats();
+  }
+
+  resetInit() {
+    this.initBonus = 0; // Обнуляем ручной бонус
+    this.recalcDerivedStats(); // Пересчитываем строго от модификатора Ловкости
+  }
+
+  changeAbilityScore(idx, delta) {
     const ab = this.abilities[idx];
     const bonus = this.getRaceStatBonus(ab.name);
 

@@ -598,14 +598,42 @@ body {
 .features-list-wrapper { flex: 1 1 auto; }
 
 .feature-list {
-  list-style-type: disc;
+  list-style: none; /* Отключаем стандартный маркер браузера, чтобы flex не ломал верстку */
   margin: 0;
-  padding-left: 12px;
+  padding: 0;
   font-size: 6.8pt;
   color: #334155;
 }
 
-.feature-list li { margin-bottom: 2px; }
+.feature-list li {
+  display: flex;
+  align-items: center; /* Центрирует крестик по вертикали, если текст занимает 2+ строки */
+  gap: 4px;
+  margin-bottom: 2px;
+  width: 100%;
+}
+
+/* Точка-маркер списка: всегда зафиксирована на уровне первой строки */
+.feature-list li::before {
+  content: "•";
+  font-weight: bold;
+  flex-shrink: 0;
+  align-self: flex-start;
+  line-height: 1.25;
+  padding-left: 2px;
+}
+
+/* Текстовый блок забирает все свободное пространство строки */
+.feature-list li span[contenteditable="true"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Крестик принудительно прижимается к правому краю карточки */
+.feature-list li .row-btn {
+  flex-shrink: 0;
+  margin-left: auto !important;
+}
 
 /* Оборотная сторона карточки на экране */
 .desc-card-screen {
