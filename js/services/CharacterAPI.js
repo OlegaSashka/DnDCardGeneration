@@ -1,21 +1,76 @@
-// Импортируем только нужную для этого файла модель Character:
 import { Character } from '../models/Character.js';
 
-/**
- * Сервис работы с хранилищем (Python API и localStorage)
- */
 export class CharacterAPI {
+  static getToken() {
+    return localStorage.getItem("dnd_auth_token") || "";
+  }
+
+  static getHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = this.getToken();
+    if (token) {
+      headers['X-Auth-Token'] = token;
+    }
+    return headers;
+  }
+
+  static async checkAuth() {
+    try {
+      const res = await fetch('/api/auth/me', { headers: this.getHeaders() });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return { authenticated: false };
+  }
+
+  static async login(username, password) {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      localStorage.setItem("dnd_auth_token", data.token);
+      localStorage.setItem("dnd_auth_user", data.username);
+      localStorage.setItem("dnd_auth_role", data.role);
+    }
+    return data;
+  }
+
+  static async register(username, password, role = "player") {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      localStorage.setItem("dnd_auth_token", data.token);
+      localStorage.setItem("dnd_auth_user", data.username);
+      localStorage.setItem("dnd_auth_role", data.role);
+    }
+    return data;
+  }
+
+  static logout() {
+    localStorage.removeItem("dnd_auth_token");
+    localStorage.removeItem("dnd_auth_user");
+    localStorage.removeItem("dnd_auth_role");
+  }
+
   static async loadAll() {
     try {
-      const res = await fetch('/api/characters');
-      if (res.ok) {
+      const res = await fetch('/api/characters', { headers: this.getHeaders() });
+      if (res.status === 401) {
+        window.dispatchEvent(new CustomEvent('dnd:require-auth'));
+      } else if (res.ok) {
         const raw = await res.json();
         if (Array.isArray(raw) && raw.length > 0) {
           return raw.map(item => new Character(item));
         }
       }
     } catch (e) {
-      console.warn("Python-сервер не запущен (работаем через память браузера)");
+      console.warn("Сервер недоступен — читаем из localStorage");
     }
 
     const fallback = localStorage.getItem("dnd_party_current_campaign");
@@ -35,7 +90,7 @@ export class CharacterAPI {
     try {
       await fetch('/api/save-all', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify(characters),
         keepalive: true
       });
@@ -43,11 +98,10 @@ export class CharacterAPI {
   }
 
   static async saveSingle(character) {
-    const fileName = `${character.id}.json`;
     return await fetch('/api/save-character', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: fileName, data: character })
+      headers: this.getHeaders(),
+      body: JSON.stringify({ data: character })
     });
   }
 
@@ -55,7 +109,7 @@ export class CharacterAPI {
     try {
       await fetch('/api/delete-character', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id: charId })
       });
     } catch(e) {}

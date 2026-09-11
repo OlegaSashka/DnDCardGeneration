@@ -1,11 +1,16 @@
-# Игнорируем сохранённые карточки персонажей
+# Персональные данные и карточки (не должны попасть в публичный Git)
 characters/*.json
-*.json
+characters/*/*.json
+users.json
+catalog.json
+
+# Переменные окружения и ключи API
+.env
 
 # Системные файлы и кэш Python
 __pycache__/
 *.pyc
-.vscode/
-.idea/
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
