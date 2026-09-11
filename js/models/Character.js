@@ -2,6 +2,7 @@
  * Модель данных одного персонажа D&D 5e с автоматическим расчетом параметров
  */
 import { DND_RACES } from '../data/racesData.js';
+import { DND_CLASSES } from '../data/classesData.js';
 
 export class Character {
   // Официальная таблица стоимости характеристик в Point Buy
@@ -20,7 +21,7 @@ export class Character {
     this.id = data.id || `char_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     this.name = data.name || "";
     this.race = data.race || "Человек";
-    this.class = data.class || "";
+    this.class = data.class || "Воин";
     this.meta = data.meta || "";
     this.level = data.level || "1";
     this.avatar = data.avatar || "";
@@ -102,6 +103,61 @@ export class Character {
     }
 
     this.syncRaceTraits();
+    this.syncClassFeatures();
+    this.recalcDerivedStats();
+  }
+
+  getClassConfig() {
+    if (!this.class) return null;
+    const cleanClass = this.class.trim().toLowerCase();
+    for (const [key, cfg] of Object.entries(DND_CLASSES)) {
+      if (cleanClass.includes(key.toLowerCase()) || key.toLowerCase().includes(cleanClass)) {
+        return cfg;
+      }
+    }
+    return null;
+  }
+
+  syncClassFeatures() {
+    const classCfg = this.getClassConfig();
+    this.classFeatures = {}; // Полная очистка умений прошлого класса
+
+    if (!classCfg) {
+      this.recalcDerivedStats();
+      return;
+    }
+
+    // 1. Автоматическая привязка кости здоровья (Hit Die: d6, d8, d10, d12)
+    if (classCfg.hitDie) {
+      this.baseHpDice = classCfg.hitDie;
+    }
+
+    // 2. Установка ресурсов класса для 5-й плашки
+    if (classCfg.extra) {
+      this.extraTitle = classCfg.extra.title;
+      this.extraVal = classCfg.extra.val;
+      this.extraSub = classCfg.extra.sub;
+    }
+
+    const lvl = Math.max(1, parseInt(this.level, 10) || 1);
+
+    // 3. Постоянные умения 1-го уровня
+    if (classCfg.baseFeatures) {
+      Object.entries(classCfg.baseFeatures).forEach(([key, html]) => {
+        this.classFeatures[key] = html;
+      });
+    }
+
+    // 4. Масштабируемые умения под текущий уровень (Скрытая атака, Кара и т.д.)
+    if (classCfg.scalingFeatures) {
+      Object.entries(classCfg.scalingFeatures).forEach(([key, resolver]) => {
+        const text = resolver(lvl);
+        if (text) {
+          this.classFeatures[key] = text;
+        }
+      });
+    }
+
     this.recalcDerivedStats();
   }
 

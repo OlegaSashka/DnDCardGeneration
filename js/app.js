@@ -2,6 +2,7 @@ import { Character } from './models/Character.js';
 import { CharacterAPI } from './services/CharacterAPI.js';
 import { PDFExporter } from './services/PDFExporter.js';
 import { DND_RACES } from './data/racesData.js';
+import { DND_CLASSES } from './data/classesData.js';
 
 class DnDApp {
   constructor() {
@@ -15,6 +16,7 @@ class DnDApp {
 
     if (this.activeCharacter) {
       this.activeCharacter.syncRaceTraits();
+      this.activeCharacter.syncClassFeatures();
     }
     this.render();
 
@@ -90,7 +92,8 @@ class DnDApp {
   changeLevel(delta) {
     this.saveCurrentDOM();
     this.activeCharacter.changeLevel(delta);
-    this.activeCharacter.syncRaceTraits(); // Пересчитываем урон дыхания/заклинания расы
+    this.activeCharacter.syncRaceTraits();
+    this.activeCharacter.syncClassFeatures(); // Масштабируем скрытую атаку, карания и ячейки
     this.render();
     this.saveCurrentDOM();
   }
@@ -138,6 +141,15 @@ class DnDApp {
     this.renderActiveCard();
     this.saveCurrentDOM();
     this.showToast("Инициатива сброшена к базовой (от Ловкости)!");
+  }
+
+  changeClass(newClass) {
+    this.saveCurrentDOM();
+    this.activeCharacter.class = newClass;
+    this.activeCharacter.syncClassFeatures();
+    this.render();
+    this.saveCurrentDOM();
+    this.showToast(`Класс изменен: ${newClass}`);
   }
 
   renderActiveCard() {
@@ -246,7 +258,11 @@ class DnDApp {
                 </div>
                 <div class="field-group">
                   <span class="field-lbl">Класс:</span>
-                  <div class="line-input meta-input" contenteditable="true" id="field-class" placeholder="Класс">${c.class || ""}</div>
+                  <select class="line-input meta-input" id="field-class" onchange="app.changeClass(this.value)" style="border: none; border-bottom: 1.2px solid #94a3b8; background: transparent; font-size: 7.5pt; font-weight: bold; color: #0f172a; outline: none; cursor: pointer; padding: 0 2px; height: 16px;">
+                    ${Object.keys(DND_CLASSES).map(className => `
+                      <option value="${className}" ${c.class === className ? 'selected' : ''}>${className}</option>
+                    `).join('')}
+                  </select>
                 </div>
 
                 <div class="field-group" style="flex-grow: 1;">
@@ -560,7 +576,6 @@ class DnDApp {
 
     c.name = getVal("field-name");
     c.race = getVal("field-race");
-    c.class = getVal("field-class");
     c.meta = getVal("field-meta");
     c.level = getVal("field-level") || "1";
     c.acSub = getVal("field-acSub");
@@ -574,6 +589,11 @@ class DnDApp {
     const raceSelect = document.getElementById("field-race");
     if (raceSelect) {
       c.race = raceSelect.value;
+    }
+
+    const classSelect = document.getElementById("field-class");
+    if (classSelect) {
+      c.class = classSelect.value;
     }
 
     const curHpEl = document.getElementById("field-hp-cur");
