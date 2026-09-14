@@ -859,3 +859,73 @@ body {
   display: inline-block;
   user-select: none;
 }
+
+/* Полная маскировка input под обычный жирный текст */
+.weapon-input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: bold !important;
+  color: inherit !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  display: inline-block;
+  vertical-align: middle;
+
+  /* Автоматическая подстройка ширины под длину текста (CSS Box Sizing 4) */
+  field-sizing: content;
+  min-width: 45px;
+  max-width: 100%;
+}
+
+.weapon-input::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+.weapon-input::placeholder {
+  font-weight: normal;
+  font-style: italic;
+  color: #94a3b8;
+}
+
+/* Отключение любых рамок и фонов при фокусе ввода */
+.weapon-input:focus {
+  background: transparent !important;
+  outline: none !important;
+  border: none !important;
+}
+
+/* Кнопка быстрого включения/выключения щита */
+.shield-toggle-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  font-size: 5.5pt;
+  font-weight: bold;
+  color: #64748b;
+  padding: 1px 4px;
+  cursor: pointer;
+  line-height: 1;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.shield-toggle-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.shield-toggle-btn.active {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}

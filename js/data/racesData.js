@@ -34,8 +34,9 @@ export const DND_RACES = {
     name: "Дварф (Холмовой)",
     stats: { [STATS.CON]: 2, [STATS.WIS]: 1 },
     speed: "25 фт",
-    speedSub: "7.5м (не замедляется броней)",
+    speedSub: "7.5м",
     hpPerLevel: 1,
+    weaponProficiencies: ["Боевой топор", "Ручной топор", "Легкий молот", "Боевой молот"],
     baseFeatures: {
       "dwarf_stats": "<b>Увеличение характеристик:</b> Телосложение +2, Мудрость +1.",
       "dwarf_darkvision": "<b>Тёмное зрение:</b> 60 фт при слабом освещении и темноте.",
@@ -50,8 +51,9 @@ export const DND_RACES = {
     name: "Дварф (Горный)",
     stats: { [STATS.STR]: 2, [STATS.CON]: 2 },
     speed: "25 фт",
-    speedSub: "7.5м (не замедляется броней)",
+    speedSub: "7.5м",
     hpPerLevel: 0,
+    weaponProficiencies: ["Боевой топор", "Ручной топор", "Легкий молот", "Боевой молот"],
     baseFeatures: {
       "dwarf_stats": "<b>Увеличение характеристик:</b> Сила +2, Телосложение +2.",
       "dwarf_darkvision": "<b>Тёмное зрение:</b> 60 фт при слабом освещении и темноте.",
@@ -107,6 +109,7 @@ export const DND_RACES = {
     speed: "30 фт",
     speedSub: "9м",
     hpPerLevel: 0,
+    weaponProficiencies: ["Длинный меч", "Короткий меч", "Короткий лук", "Длинный лук"],
     baseFeatures: {
       "elf_stats": "<b>Увеличение характеристик:</b> Ловкость +2, Интеллект +1.",
       "elf_darkvision": "<b>Тёмное зрение:</b> 60 фт.",
@@ -124,6 +127,7 @@ export const DND_RACES = {
     speed: "30 фт",
     speedSub: "9м",
     hpPerLevel: 0,
+    weaponProficiencies: ["Длинный меч", "Короткий меч", "Короткий лук", "Длинный лук"],
     baseFeatures: {
       "drow_stats": "<b>Увеличение характеристик:</b> Ловкость +2, Харизма +1.",
       "superior_darkvision": "<b>Превосходное тёмное зрение:</b> 120 фт.",

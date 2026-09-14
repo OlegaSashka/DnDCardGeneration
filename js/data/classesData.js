@@ -10,6 +10,9 @@ export const DND_CLASSES = {
   "Воин": {
     name: "Воин",
     hitDie: 10,
+    defaultArmor: "Тяжелый",
+    defaultWeapons: ["Длинный меч"],
+    weaponProficiencies: ["simple", "martial"],
     extra: {
       title: "Второе дыхание",
       val: "□",
@@ -28,6 +31,8 @@ export const DND_CLASSES = {
   "Варвар": {
     name: "Варвар",
     hitDie: 12,
+    efaultArmor: "Без доспеха",
+    defaultWeapons: ["Двуручный топор", "Ручной топор"],
     extra: {
       title: "Ярость",
       val: "□ □",
@@ -46,6 +51,9 @@ export const DND_CLASSES = {
   "Плут": {
     name: "Плут",
     hitDie: 8,
+    defaultArmor: "Легкий",
+    defaultWeapons: ["Короткий лук", "Кинжал"],
+    weaponProficiencies: ["simple", "Рапира", "Длинный меч", "Короткий меч", "Ручной арбалет"],
     extra: {
       title: "Скрытая атака",
       val: "+1d6",
@@ -68,6 +76,9 @@ export const DND_CLASSES = {
   "Жрец": {
     name: "Жрец",
     hitDie: 8,
+    defaultArmor: "Средний",
+    defaultWeapons: ["Булава"],
+    weaponProficiencies: ["simple"],
     extra: {
       title: "Ячейки магии",
       val: "□ □",
@@ -85,6 +96,9 @@ export const DND_CLASSES = {
   "Волшебник": {
     name: "Волшебник",
     hitDie: 6,
+    defaultArmor: "Без доспеха",
+    defaultWeapons: ["Боевой посох"],
+    weaponProficiencies: ["Кинжал", "Дротик", "Боевой посох", "Легкий арбалет"],
     extra: {
       title: "Ячейки магии",
       val: "□ □",
@@ -102,6 +116,9 @@ export const DND_CLASSES = {
   "Паладин": {
     name: "Паладин",
     hitDie: 10,
+    defaultArmor: "Тяжелый",
+    defaultWeapons: ["Длинный меч"],
+    weaponProficiencies: ["simple", "martial"],
     extra: {
       title: "Наложение рук",
       val: "5 ХП",
@@ -123,6 +140,8 @@ export const DND_CLASSES = {
   "Следопыт": {
     name: "Следопыт",
     hitDie: 10,
+    defaultArmor: "Легкий",
+    defaultWeapons: ["Длинный лук", "Короткий меч"],
     extra: {
       title: "Ячейки магии",
       val: "—",
@@ -140,6 +159,8 @@ export const DND_CLASSES = {
   "Бард": {
     name: "Бард",
     hitDie: 8,
+    defaultArmor: "Легкий",
+    defaultWeapons: ["Рапира", "Лютня"],
     extra: {
       title: "Вдохновение",
       val: "□ □ □",

@@ -3,6 +3,9 @@
  */
 import { DND_RACES } from '../data/racesData.js';
 import { DND_CLASSES } from '../data/classesData.js';
+import { DND_WEAPONS } from '../data/weaponsData.js';
+import { DND_ARMORS } from '../data/armorsData.js';
+import { DND_FEATS } from '../data/featsData.js';
 
 export class Character {
   // Официальная таблица стоимости характеристик в Point Buy
@@ -26,6 +29,9 @@ export class Character {
     this.level = data.level || "1";
     this.avatar = data.avatar || "";
     this.description = data.description || "";
+    // Доспех персонажа
+    this.armor = data.armor || "Без доспеха";
+    this.hasShield = data.hasShield !== undefined ? Boolean(data.hasShield) : false;
 
     // Бонус инициативы (для черт, заклинаний и ручной подстройки)
     this.initBonus = data.initBonus !== undefined ? parseInt(data.initBonus, 10) : 0;
@@ -58,6 +64,18 @@ export class Character {
     this.extraVal = data.extraVal || "□";
     this.extraSub = data.extraSub || "Переброс d20";
 
+    // Изолированные категории оружия и атак
+    this.classAttacks = Array.isArray(data.classAttacks) ? data.classAttacks : [];
+
+    if (Array.isArray(data.customAttacks)) {
+      this.customAttacks = data.customAttacks.filter(a => a && !a.name.toLowerCase().includes("щит"));
+    } else if (Array.isArray(data.attacks)) {
+      // Миграция старых данных: отсекаем заглушки и щит из оружия
+      this.customAttacks = data.attacks.filter(a => a && a.name && a.name !== "Оружие" && !a.name.toLowerCase().includes("щит"));
+    } else {
+      this.customAttacks = [];
+    }
+
   const defaultScore = this.budgetMode === "point_buy" ? "8" : "12";
     const rawAbilities = data.abilities || [
       { name: "СИЛА", score: defaultScore },
@@ -79,9 +97,15 @@ export class Character {
       };
     });
 
-    this.attacks = data.attacks || [
-      { name: "Оружие", hit: "d20 + 2", dmg: "1d6 + 0" }
-    ];
+    // Изолированные категории оружия и атак
+    this.classAttacks = data.classAttacks || [];
+    if (data.customAttacks) {
+      this.customAttacks = data.customAttacks;
+    } else if (Array.isArray(data.attacks)) {
+      this.customAttacks = data.attacks.filter(a => a && a.name && a.name !== "Оружие");
+    } else {
+      this.customAttacks = [];
+    }
 
     this.deathSuccess = data.deathSuccess || 0;
     this.deathFail = data.deathFail || 0;
@@ -107,6 +131,56 @@ export class Character {
     this.recalcDerivedStats();
   }
 
+  // Бонус мастерства от уровня (D&D 5e: 1-4 ур: +2, 5-8 ур: +3 и т.д.)
+  get profBonus() {
+    const lvl = Math.max(1, parseInt(this.level, 10) || 1);
+    return Math.floor((lvl - 1) / 4) + 2;
+  }
+
+  // Быстрый доступ к модификаторам всех 6 характеристик
+  get strMod() { return this.getAbilityNumMod("СИЛ"); }
+  get dexMod() { return this.getAbilityNumMod("ЛОВ"); }
+  get conMod() { return this.getAbilityNumMod("ТЕЛО"); }
+  get intMod() { return this.getAbilityNumMod("ИНТ"); }
+  get wisMod() { return this.getAbilityNumMod("МУД"); }
+  get chaMod() { return this.getAbilityNumMod("ХАР"); }
+
+  // Универсальный резолвер модификатора по текстовому ключу
+  getModByStat(statKey) {
+    switch ((statKey || "").toUpperCase()) {
+      case "ЛОВ": return this.dexMod;
+      case "СИЛ": return this.strMod;
+      case "ТЕЛО": return this.conMod;
+      case "ИНТ": return this.intMod;
+      case "МУД": return this.wisMod;
+      case "ХАР": return this.chaMod;
+      case "ЛОВ_ИЛИ_СИЛ": return Math.max(this.dexMod, this.strMod);
+      default: return this.strMod;
+    }
+  }
+
+  // Универсальный сборщик всех эффектов со всех активных черт
+  getActiveModifiers() {
+    const mods = {
+      acBonus: 0,
+      initBonus: 0,
+      hpPerLvl: 0,
+      weaponProf: []
+    };
+
+    (this.feats || []).forEach(featKey => {
+      const feat = DND_FEATS[featKey];
+      if (!feat) return;
+
+      if (feat.acBonus) mods.acBonus += feat.acBonus;
+      if (feat.initBonus) mods.initBonus += feat.initBonus;
+      if (feat.hpPerLvl) mods.hpPerLvl += feat.hpPerLvl;
+      if (Array.isArray(feat.weaponProf)) mods.weaponProf.push(...feat.weaponProf);
+    });
+
+    return mods;
+  }
+
   getClassConfig() {
     if (!this.class) return null;
     const cleanClass = this.class.trim().toLowerCase();
@@ -118,37 +192,221 @@ export class Character {
     return null;
   }
 
+  // Нечеткий поиск оружия в справочнике (опечатки, недопечатки, префиксы)
+  static findWeaponMatch(rawName) {
+    const clean = (rawName || "").toLowerCase().trim();
+    if (!clean) return null;
+
+    // 1. Точное совпадение или прямое вхождение подстроки
+    for (const [key, cfg] of Object.entries(DND_WEAPONS)) {
+      const k = key.toLowerCase();
+      if (clean === k || clean.includes(k) || k.includes(clean)) {
+        return [key, cfg];
+      }
+    }
+
+    // Алгоритм расстояния Левенштейна для поиска опечаток
+    const getLevenshteinDistance = (s1, s2) => {
+      const m = s1.length, n = s2.length;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = s1[i - 1] === s2[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return dp[m][n];
+    };
+
+    const inputWords = clean.split(/\s+/).filter(Boolean);
+
+    // 2. Поиск по префиксам слов (недопечатки: «длин меч», «корот лук», «рапир»)
+    for (const [key, cfg] of Object.entries(DND_WEAPONS)) {
+      const keyWords = key.toLowerCase().split(/\s+/);
+      const allWordsMatchPrefix = inputWords.length > 0 && inputWords.every(w =>
+        w.length >= 3 && keyWords.some(kw => kw.startsWith(w) || w.startsWith(kw))
+      );
+      if (allWordsMatchPrefix) {
+        return [key, cfg];
+      }
+    }
+
+    // 3. Поиск по опечаткам («кинжл», «секиро», «длиный меч»)
+    let bestMatch = null;
+    let minDistance = Infinity;
+
+    for (const [key, cfg] of Object.entries(DND_WEAPONS)) {
+      const k = key.toLowerCase();
+      const d = getLevenshteinDistance(clean, k);
+      const allowedErrors = k.length > 6 ? 2 : 1; // 1 опечатка для коротких слов, 2 для длинных
+      if (d <= allowedErrors && d < minDistance) {
+        minDistance = d;
+        bestMatch = [key, cfg];
+      }
+    }
+
+    return bestMatch;
+  }
+
+// Проверка владения оружием (автоматически от класса и расы)
+  checkDefaultWeaponProficiency(weaponName) {
+    if (!weaponName) return false;
+    const clean = weaponName.toLowerCase().trim();
+
+    const match = Character.findWeaponMatch(clean);
+    // Если оружие не в каталоге — его категория "improvised"
+    const category = match ? match[1].category : "improvised";
+    const stdName = match ? match[0].toLowerCase() : clean;
+
+    const classCfg = this.getClassConfig();
+    const raceCfg = this.getRaceConfig();
+
+    const mods = this.getActiveModifiers();
+
+    // Единый массив всех владений персонажа (Класс + Раса + Черты)
+    const allProfs = [
+      ...(classCfg?.weaponProficiencies || []),
+      ...(raceCfg?.weaponProficiencies || []),
+      ...mods.weaponProf
+    ].map(p => p.toLowerCase());
+
+    // Проверяем: совпала ли категория (simple, martial, improvised) или точное имя оружия
+    return allProfs.includes(category) || allProfs.includes(stdName);
+  }
+
+  // Расчет атаки конкретного оружия
+  calcWeaponStats(weaponName, isProfOverride = null) {
+    const cleanName = (weaponName || "").trim();
+    if (!cleanName) return null;
+
+    const baseQuery = cleanName
+      .replace(/\s*\*+$/g, '')
+      .replace(/\s*[\(\[]?(импров|improv)[\.а-яa-z]*[\)\]]?/gi, '')
+      .trim();
+
+    const match = Character.findWeaponMatch(baseQuery || cleanName);
+
+    // Определяем статус владения: ручной оверрайд или автоопределение
+    const isProficient = (isProfOverride !== null)
+      ? Boolean(isProfOverride)
+      : this.checkDefaultWeaponProficiency(baseQuery || cleanName);
+
+    if (match) {
+      const [standardName, w] = match;
+      const finalName = (cleanName.length > standardName.length + 4) ? cleanName : standardName;
+
+      const allowedStats = Array.isArray(w.stats) ? w.stats : ["СИЛ"];
+      let bestStat = allowedStats[0];
+      let maxMod = this.getAbilityNumMod(bestStat);
+
+      for (let i = 1; i < allowedStats.length; i++) {
+        const curMod = this.getAbilityNumMod(allowedStats[i]);
+        if (curMod > maxMod) {
+          maxMod = curMod;
+          bestStat = allowedStats[i];
+        }
+      }
+
+      const mod = maxMod;
+      const statKey = bestStat;
+
+      // Прибавляем бонус мастерства ТОЛЬКО при наличии владения
+      const profToAdd = isProficient ? this.profBonus : 0;
+      const hitTotal = mod + profToAdd;
+      const hit = `d20 ${hitTotal >= 0 ? '+' : '-'} ${Math.abs(hitTotal)} (${statKey})`;
+
+      let dmg = w.dice;
+      if (mod !== 0) {
+        dmg += ` ${mod >= 0 ? '+' : '-'} ${Math.abs(mod)} (${statKey})`;
+      } else {
+        dmg += ` (${statKey})`;
+      }
+      if (w.type) {
+        dmg += ` ${w.type}`;
+      }
+
+      const tooltip = `Владение: ${isProficient ? 'Да (+ ' + this.profBonus + ')' : 'Нет (+0)'}\n` +
+                      `Попадание: d20 + ${profToAdd} (Маст.) ${mod >= 0 ? '+' : '-'} ${Math.abs(mod)} (${statKey}) = ${hit}\n` +
+                      `Урон: ${w.dice} ${mod >= 0 ? '+' : '-'} ${Math.abs(mod)} (${statKey})`;
+
+      return { name: finalName, hit, dmg, tooltip, isProficient, isImprovised: false };
+    }
+
+    // Импровизированное оружие (*)
+    const finalName = `${baseQuery || cleanName} *`;
+    const str = this.strMod;
+    const profToAdd = isProficient ? this.profBonus : 0;
+    const hitTotal = str + profToAdd;
+    const hit = `d20 ${hitTotal >= 0 ? '+' : '-'} ${Math.abs(hitTotal)} (СИЛ)`;
+    const dmg = `1d4 ${str !== 0 ? (str >= 0 ? '+' : '-') + ' ' + Math.abs(str) + ' ' : ''}дробящий`;
+
+    return { name: finalName, hit, dmg, isProficient, isImprovised: true };
+  }
+
+// Перерасчет обеих категорий атак от текущих характеристик
+  recalcAttacks() {
+    const all = [...(this.classAttacks || []), ...(this.customAttacks || [])];
+    all.forEach(atk => {
+      const calculated = this.calcWeaponStats(atk.name);
+      if (calculated) {
+        atk.hit = calculated.hit;
+        atk.dmg = calculated.dmg;
+      }
+    });
+  }
+
+// Применение стартового арсенала класса (чистит только категорию класса)
+  applyClassWeapons(force = true) {
+    const classCfg = this.getClassConfig();
+    if (!force && this.classAttacks && this.classAttacks.length > 0) {
+      return;
+    }
+
+    this.classAttacks = []; // Сбрасываем оружие предыдущего класса
+
+    if (!classCfg || !classCfg.defaultWeapons) return;
+
+    this.classAttacks = classCfg.defaultWeapons.map(weaponName => {
+      const stats = this.calcWeaponStats(weaponName);
+      return stats || { name: weaponName, hit: "d20 + 2", dmg: "1d6" };
+    });
+  }
+
   syncClassFeatures() {
     const classCfg = this.getClassConfig();
-    this.classFeatures = {}; // Полная очистка умений прошлого класса
+    this.classFeatures = {}; // Очистка умений прошлого класса
 
     if (!classCfg) {
+      this.classAttacks = [];
       this.recalcDerivedStats();
       return;
     }
 
-    // 1. Автоматическая привязка кости здоровья (Hit Die: d6, d8, d10, d12)
     if (classCfg.hitDie) {
       this.baseHpDice = classCfg.hitDie;
     }
 
-    // 2. Установка ресурсов класса для 5-й плашки
     if (classCfg.extra) {
       this.extraTitle = classCfg.extra.title;
       this.extraVal = classCfg.extra.val;
       this.extraSub = classCfg.extra.sub;
     }
 
+    if (classCfg.defaultArmor && (!this.armor || this.armor === "Без доспеха")) {
+      this.armor = classCfg.defaultArmor;
+    }
+
     const lvl = Math.max(1, parseInt(this.level, 10) || 1);
 
-    // 3. Постоянные умения 1-го уровня
     if (classCfg.baseFeatures) {
       Object.entries(classCfg.baseFeatures).forEach(([key, html]) => {
         this.classFeatures[key] = html;
       });
     }
 
-    // 4. Масштабируемые умения под текущий уровень (Скрытая атака, Кара и т.д.)
     if (classCfg.scalingFeatures) {
       Object.entries(classCfg.scalingFeatures).forEach(([key, resolver]) => {
         const text = resolver(lvl);
@@ -158,6 +416,8 @@ export class Character {
       });
     }
 
+    // Принудительно обновляем классовый арсенал под выбранный класс
+    this.applyClassWeapons(true);
     this.recalcDerivedStats();
   }
 
@@ -167,6 +427,32 @@ export class Character {
       ...Object.values(this.classFeatures || {}),
       ...(this.customFeatures || [])
     ];
+  }
+
+  get attacks() {
+    return [
+      ...(this.classAttacks || []),
+      ...(this.customAttacks || [])
+    ];
+  }
+
+  // Строка экипировки для PDF и подсказок
+  get armorLabel() {
+    const parts = [this.armor || "Без доспеха"];
+    if (this.hasShield) parts.push("Щит (+2)");
+    if (this.armorBonus) parts.push(`${this.armorBonus > 0 ? '+' : ''}${this.armorBonus}`);
+    return parts.join(" • ");
+  }
+
+  setArmor(armorName) {
+    this.armor = DND_ARMORS[armorName] ? armorName : "Без доспеха";
+    this.recalcDerivedStats();
+  }
+
+  setArmor(armorName) {
+    this.armor = DND_ARMORS[armorName] ? armorName : "Без доспеха";
+    this.acSub = `${this.armor}${this.hasShield ? ' + Щит' : ''}`;
+    this.recalcDerivedStats();
   }
 
   getRaceStatBonus(abilityName) {
@@ -181,6 +467,7 @@ export class Character {
     }
     return 0;
   }
+
 
   changeFontSize(section, delta) {
     if (!this.fontSizes) {
@@ -291,7 +578,12 @@ export class Character {
     this.recalcDerivedStats();
   }
 
-  recalcDerivedStats() {
+recalcDerivedStats() {
+    const lvl = Math.max(1, parseInt(this.level, 10) || 1);
+    const raceCfg = this.getRaceConfig();
+    const armorCfg = DND_ARMORS[this.armor] || DND_ARMORS["Без доспеха"];
+
+    // 1. Характеристики (База + Раса -> Итоговый счет и модификатор)
     this.abilities.forEach(ab => {
       const bonus = this.getRaceStatBonus(ab.name);
       ab.raceBonus = bonus;
@@ -302,36 +594,61 @@ export class Character {
       const base = !isNaN(parsedBase) ? parsedBase : defaultFloor;
       ab.baseScore = base.toString();
 
-      // Итоговое значение: База + Раса
       const total = base + bonus;
       ab.score = total.toString();
-      const modNum = Character.calcMod(total);
-      ab.mod = Character.formatMod(modNum);
+      ab.mod = Character.formatMod(Character.calcMod(total));
     });
 
-    const dexMod = this.getAbilityNumMod("ЛОВК");
+    // 2. Модификаторы основных характеристик и активных черт
+    const dexMod = this.getAbilityNumMod("ЛОВ");
     const conMod = this.getAbilityNumMod("ТЕЛО");
-    const lvl = Math.max(1, parseInt(this.level, 10) || 1);
+    const mods = this.getActiveModifiers();
 
-    const totalInit = dexMod + (parseInt(this.initBonus, 10) || 0);
+    // 3. Класс Доспеха (КД)
+    let effectiveDex = dexMod;
+    if (armorCfg.maxDex === 0) {
+      effectiveDex = 0; // Тяжелые доспехи игнорируют Ловкость
+    } else if (armorCfg.maxDex !== null) {
+      effectiveDex = Math.min(dexMod, armorCfg.maxDex); // Средние доспехи: максимум +2
+    }
+
+    const shieldBonus = this.hasShield ? 2 : 0;
+    const manualAcBonus = parseInt(this.armorBonus, 10) || 0;
+    const totalAC = armorCfg.baseAC + effectiveDex + shieldBonus + manualAcBonus + (mods.acBonus || 0);
+    this.ac = totalAC.toString();
+
+    // 4. Инициатива (Ловкость + Ручной бонус + Бонус черт)
+    const manualInitBonus = parseInt(this.initBonus, 10) || 0;
+    const totalInit = dexMod + manualInitBonus + (mods.initBonus || 0);
     this.init = Character.formatMod(totalInit);
     this.initSub = totalInit >= 0 ? `d20+${totalInit}` : `d20${totalInit}`;
 
-    const totalAC = 10 + dexMod + (parseInt(this.armorBonus, 10) || 0);
-    this.ac = totalAC.toString();
+    // 5. Скорость и помеха на скрытность от доспеха
+    const baseSpeedMeters = raceCfg?.speedSub || "9м";
+    this.speedSub = armorCfg.stealthDisadv
+      ? `${baseSpeedMeters} • Помеха скрытности`
+      : baseSpeedMeters;
 
-    const raceCfg = this.getRaceConfig();
+    // 6. Максимум здоровья (HP)
+    const baseDice = parseInt(this.baseHpDice, 10) || 8;
+    const avgGain = Math.floor(baseDice / 2) + 1;
     const raceHpBonus = (raceCfg?.hpPerLevel || 0) * lvl;
-
-    const baseHp = parseInt(this.baseHpDice, 10) || 8;
-    const avgGain = Math.floor(baseHp / 2) + 1;
-    const extra = parseInt(this.hpMaxExtra, 10) || 0;
+    const featHpBonus = (mods.hpPerLvl || 0) * lvl;
+    const manualHpExtra = parseInt(this.hpMaxExtra, 10) || 0;
 
     const calculatedMax = Math.max(
       1,
-      baseHp + (avgGain * (lvl - 1)) + (conMod * lvl) + raceHpBonus + extra
+      baseDice + (avgGain * (lvl - 1)) + (conMod * lvl) + raceHpBonus + featHpBonus + manualHpExtra
     );
     this.hpMax = calculatedMax.toString();
+
+    // 7. Перерасчет бросков атак и урона
+    this.recalcAttacks();
+  }
+
+  toggleShield() {
+    this.hasShield = !this.hasShield;
+    this.recalcDerivedStats();
   }
 
   changeInitBonus(delta) {
@@ -476,6 +793,9 @@ export class Character {
   }
 
   toJSON() {
-    return { ...this };
+    return {
+      ...this,
+      attacks: this.attacks
+    };
   }
 }

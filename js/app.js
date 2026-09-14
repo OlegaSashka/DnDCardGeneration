@@ -3,6 +3,8 @@ import { CharacterAPI } from './services/CharacterAPI.js';
 import { PDFExporter } from './services/PDFExporter.js';
 import { DND_RACES } from './data/racesData.js';
 import { DND_CLASSES } from './data/classesData.js';
+import { DND_WEAPONS } from './data/weaponsData.js';
+import { DND_ARMORS } from './data/armorsData.js';
 
 class DnDApp {
   constructor() {
@@ -146,7 +148,7 @@ class DnDApp {
   changeClass(newClass) {
     this.saveCurrentDOM();
     this.activeCharacter.class = newClass;
-    this.activeCharacter.syncClassFeatures();
+    this.activeCharacter.syncClassFeatures();    this.activeCharacter.applyClassWeapons(true);
     this.render();
     this.saveCurrentDOM();
     this.showToast(`Класс изменен: ${newClass}`);
@@ -175,16 +177,87 @@ class DnDApp {
       `;
     });
 
-    // 2. Атаки
+// 2. Атаки (Классовое оружие + Пользовательское / AI)
     let attacksHTML = "";
-    c.attacks.forEach((atk, idx) => {
+
+    // Генерация скрытого каталога автодополнения для браузера
+    const datalistHTML = `
+      <datalist id="weaponsCatalogList">
+        ${Object.entries(DND_WEAPONS).map(([name, w]) => `
+          <option value="${name}">${w.dice} ${w.type || ''}${w.finesse ? ' • фехт.' : ''}${w.ranged ? ' • дальн.' : ''}</option>
+        `).join('')}
+      </datalist>
+    `;
+
+    // А. Классовое оружие
+    (c.classAttacks || []).forEach((atk, idx) => {
+      const charLen = Math.max(1, (atk.name || "").length);
+      const isProf = atk.isProficient !== undefined ? atk.isProficient : c.checkDefaultWeaponProficiency(atk.name);
+
       attacksHTML += `
-        <tr>
-          <td contenteditable="true" data-atk-name="${idx}"><b>${atk.name}</b></td>
-          <td contenteditable="true" data-atk-hit="${idx}">${atk.hit}</td>
-          <td contenteditable="true" data-atk-dmg="${idx}">${atk.dmg}</td>
+        <tr title="${atk.tooltip || ''}">
+          <td style="display: flex; align-items: center; gap: 3px; padding: 1px 2px;">
+            <span class="no-print"
+                  onclick="app.toggleAttackProf('class', ${idx})"
+                  title="${isProf ? 'Владеет оружием (+мастерство)' : 'Не владеет (только стат)'}"
+                  style="cursor: pointer; font-size: 8pt; color: ${isProf ? '#2563eb' : '#94a3b8'}; user-select: none; line-height: 1;">
+              ${isProf ? '●' : '○'}
+            </span>
+            <input type="text"
+                   class="weapon-input"
+                   list="weaponsCatalogList"
+                   value="${atk.name}"
+                   size="${charLen}"
+                   data-atk-type="class"
+                   data-atk-field="name"
+                   data-atk-idx="${idx}"
+                   title="${atk.tooltip || ''}"
+                   placeholder="Оружие..."
+                   oninput="this.size = Math.max(1, this.value.length); app.onWeaponInput('class', ${idx}, this.value)"
+                   onchange="app.onWeaponCommit('class', ${idx}, this.value)"
+                   onkeydown="if(event.key === 'Enter'){ this.blur(); }">
+          </td>
+          <td contenteditable="true" data-atk-type="class" data-atk-field="hit" data-atk-idx="${idx}" title="${atk.tooltip || ''}">${atk.hit}</td>
+          <td contenteditable="true" data-atk-type="class" data-atk-field="dmg" data-atk-idx="${idx}" title="${atk.tooltip || ''}">${atk.dmg}</td>
           <td class="no-print" style="width: 16px; text-align:right;">
-            <button class="row-btn" onclick="app.deleteAttack(${idx})" title="Удалить">✕</button>
+            <button class="row-btn" onclick="app.deleteAttack('class', ${idx})" title="Удалить">✕</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    // Б. Пользовательское оружие / Gemini
+    (c.customAttacks || []).forEach((atk, idx) => {
+      const charLen = Math.max(1, (atk.name || "").length);
+      const isProf = atk.isProficient !== undefined ? atk.isProficient : c.checkDefaultWeaponProficiency(atk.name);
+
+      attacksHTML += `
+        <tr title="${atk.tooltip || ''}">
+          <td style="display: flex; align-items: center; gap: 3px; padding: 1px 2px;">
+            <span class="no-print"
+                  onclick="app.toggleAttackProf('custom', ${idx})"
+                  title="${isProf ? 'Владеет оружием (+мастерство)' : 'Не владеет (только стат)'}"
+                  style="cursor: pointer; font-size: 8pt; color: ${isProf ? '#2563eb' : '#94a3b8'}; user-select: none; line-height: 1;">
+              ${isProf ? '●' : '○'}
+            </span>
+            <input type="text"
+                   class="weapon-input"
+                   list="weaponsCatalogList"
+                   value="${atk.name}"
+                   size="${charLen}"
+                   data-atk-type="custom"
+                   data-atk-field="name"
+                   data-atk-idx="${idx}"
+                   title="${atk.tooltip || ''}"
+                   placeholder="Оружие..."
+                   oninput="this.size = Math.max(1, this.value.length); app.onWeaponInput('custom', ${idx}, this.value)"
+                   onchange="app.onWeaponCommit('custom', ${idx}, this.value)"
+                   onkeydown="if(event.key === 'Enter'){ this.blur(); }">
+          </td>
+          <td contenteditable="true" data-atk-type="custom" data-atk-field="hit" data-atk-idx="${idx}" title="${atk.tooltip || ''}">${atk.hit}</td>
+          <td contenteditable="true" data-atk-type="custom" data-atk-field="dmg" data-atk-idx="${idx}" title="${atk.tooltip || ''}">${atk.dmg}</td>
+          <td class="no-print" style="width: 16px; text-align:right;">
+            <button class="row-btn" onclick="app.deleteAttack('custom', ${idx})" title="Удалить">✕</button>
           </td>
         </tr>
       `;
@@ -287,14 +360,23 @@ class DnDApp {
 
       <table class="stats-row">
         <tr>
-          <td class="stat-badge" style="width: 18%;">
+        <td class="stat-badge" style="width: 18%;">
             <span class="stat-badge-title">КД (Защита)</span>
             <div style="display:flex; align-items:center; justify-content:center; gap:2px; margin:1px 0;">
               <button class="stat-btn no-print" onclick="app.changeArmorBonus(-1)" title="Уменьшить броню" style="cursor:pointer; width:16px; height:16px; padding:0; line-height:1;">−</button>
-              <span class="stat-badge-val" onclick="app.resetAC()" title="Клик: сбросить броню к 10+Ловк" style="cursor:pointer; font-weight:bold; min-width:20px; user-select:none;">${c.ac}</span>
-              <button class="stat-btn no-print" onclick="app.changeArmorBonus(1)" title="Добавить щит/броню (+1)" style="cursor:pointer; width:16px; height:16px; padding:0; line-height:1;">+</button>
+              <span class="stat-badge-val" onclick="app.resetAC()" title="Клик: сбросить к базовому КД доспеха" style="cursor:pointer; font-weight:bold; min-width:20px; user-select:none;">${c.ac}</span>
+              <button class="stat-btn no-print" onclick="app.changeArmorBonus(1)" title="Добавить бонус (+1)" style="cursor:pointer; width:16px; height:16px; padding:0; line-height:1;">+</button>
             </div>
-            <span class="stat-badge-sub" contenteditable="true" id="field-acSub">${c.acSub || "Без доспеха"}</span>
+            <div style="display:flex; align-items:center; justify-content:center; gap:2px; margin-top:2px;">
+              <select class="no-print" id="field-armor-select" onchange="app.changeArmor(this.value)" style="border:1px solid #cbd5e1; border-radius:3px; font-size:6pt; font-weight:bold; background:#fff; color:#334155; padding:1px 2px; outline:none; cursor:pointer; max-width:68px;">
+                ${Object.keys(DND_ARMORS).map(armorKey => `
+                  <option value="${armorKey}" ${c.armor === armorKey ? 'selected' : ''}>${armorKey}</option>
+                `).join('')}
+              </select>
+              <button class="shield-toggle-btn no-print ${c.hasShield ? 'active' : ''}" onclick="app.toggleShield()" title="Надеть/снять щит (+2 КД)" style="padding:1px 3px; font-size:5.5pt;">
+                🛡️ ${c.hasShield ? '+2' : 'нет'}
+              </button>
+            </div>
           </td>
 
           <td class="stat-badge" style="width: 36%;">
@@ -362,13 +444,16 @@ class DnDApp {
           <div class="block-section weapons-section">
             <div class="block-title" style="display:flex; justify-content:space-between; align-items:center;">
               <span>⚔️ Оружие и атаки</span>
-              <div style="display:flex; align-items:center; gap:2px;">
+              <div style="display:flex; align-items:center; gap:3px;">
+                <button class="row-btn no-print" onclick="app.recalcWeapons()" title="✨ Пересчитать урон и атаку от текущих статов" style="font-size:8pt; padding:0 3px;">✨</button>
+                <button class="row-btn no-print" onclick="app.equipClassWeapons()" title="🎲 Выдать стартовое оружие текущего класса" style="font-size:8pt; padding:0 3px;">🎲</button>
                 <button class="font-size-btn no-print" onclick="app.changeFontSize('attacks', -0.5)" title="Уменьшить шрифт">A−</button>
                 <span class="font-size-val no-print">${c.fontSizes?.attacks || 7.5}pt</span>
                 <button class="font-size-btn no-print" onclick="app.changeFontSize('attacks', 0.5)" title="Увеличить шрифт">A+</button>
                 <button class="add-btn no-print" onclick="app.addAttack()" style="margin-left:4px;"><i class="fa-solid fa-plus"></i> Добавить</button>
               </div>
             </div>
+            ${datalistHTML}
             <table class="compact-table" style="font-size: ${c.fontSizes?.attacks || 7.5}pt;">
               <tr>
                 <th>Оружие</th>
@@ -379,7 +464,6 @@ class DnDApp {
               ${attacksHTML}
             </table>
           </div>
-
           <div class="death-saves-box">
             <b>Спасброски от смерти:</b><br>
             Успехи: 
@@ -454,6 +538,122 @@ class DnDApp {
       el.addEventListener('input', () => this.saveCurrentDOM());
       el.addEventListener('paste', (e) => this.handleCleanPaste(e));
     });
+  }
+
+  changeArmor(newArmor) {
+    this.saveCurrentDOM();
+    this.activeCharacter.setArmor(newArmor);
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+    this.showToast(`Доспех изменен: ${newArmor}`);
+  }
+
+  toggleShield() {
+    this.saveCurrentDOM();
+    this.activeCharacter.toggleShield();
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+    this.showToast(this.activeCharacter.hasShield ? "Щит надет (+2 к КД)" : "Щит снят (-2 к КД)");
+  }
+
+  // Срабатывает во время ввода: если игрок выбрал оружие из списка — сразу рассчитываем
+  onWeaponInput(type, idx, val) {
+    const clean = (val || "").trim();
+    // Если набрано точное название из каталога (клик по подсказке datalist)
+    if (DND_WEAPONS[clean]) {
+      this.onWeaponCommit(type, idx, clean);
+    }
+  }
+
+  toggleAttackProf(type, idx) {
+    this.saveCurrentDOM();
+    const c = this.activeCharacter;
+    const list = type === 'class' ? c.classAttacks : c.customAttacks;
+    if (!list || !list[idx]) return;
+
+    const currentProf = list[idx].isProficient !== undefined
+      ? list[idx].isProficient
+      : c.checkDefaultWeaponProficiency(list[idx].name);
+
+    const nextProf = !currentProf;
+    list[idx].isProficient = nextProf;
+
+    const recalculated = c.calcWeaponStats(list[idx].name, nextProf);
+    if (recalculated) {
+      list[idx].hit = recalculated.hit;
+      list[idx].dmg = recalculated.dmg;
+      list[idx].tooltip = recalculated.tooltip;
+    }
+
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+    this.showToast(nextProf ? "Владение оружием включено" : "Владение оружием выключено");
+  }
+
+  // Фиксация ввода (выбор из списка, потеря фокуса или нажатие Enter)
+  onWeaponCommit(type, idx, newName) {
+    const c = this.activeCharacter;
+    if (!c) return;
+
+    const targetList = type === 'class' ? c.classAttacks : c.customAttacks;
+    if (!targetList || !targetList[idx]) return;
+
+    const clean = (newName || "").trim();
+    if (!clean) return;
+
+    // Расчет через нечеткий поиск Character.calcWeaponStats
+    const calculated = c.calcWeaponStats(clean);
+    if (calculated) {
+      targetList[idx].name = calculated.name;
+      targetList[idx].hit = calculated.hit;
+      targetList[idx].dmg = calculated.dmg;
+
+      if (calculated.isImprovised) {
+        this.showToast(`«${calculated.name}» рассчитано как импровизированное!`, "warn");
+      } else if (calculated.name !== clean) {
+        this.showToast(`Опознано как «${calculated.name}»`);
+      }
+    }
+
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+  }
+
+  onWeaponNameBlur(type, idx, newName) {
+    const c = this.activeCharacter;
+    if (!c) return;
+
+    const targetList = type === 'class' ? c.classAttacks : c.customAttacks;
+    if (!targetList || !targetList[idx]) return;
+
+    const clean = (newName || "").trim();
+    if (!clean) return;
+
+    targetList[idx].name = clean;
+    const calculated = c.calcWeaponStats(clean);
+    if (calculated) {
+      targetList[idx].hit = calculated.hit;
+      targetList[idx].dmg = calculated.dmg;
+    }
+
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+  }
+
+  recalcWeapons() {
+    this.saveCurrentDOM();
+    this.activeCharacter.recalcAttacks();
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+    this.showToast("Атаки пересчитаны по формулам D&D 5e!");
+  }
+
+  equipClassWeapons() {
+    this.saveCurrentDOM();
+    this.activeCharacter.applyClassWeapons(true);
+    this.renderActiveCard();
+    this.saveCurrentDOM();
+    this.showToast(`Выдано стартовое оружие класса: ${this.activeCharacter.class}`);
   }
 
   handleCleanPaste(e) {
@@ -578,7 +778,12 @@ class DnDApp {
     c.race = getVal("field-race");
     c.meta = getVal("field-meta");
     c.level = getVal("field-level") || "1";
-    c.acSub = getVal("field-acSub");
+
+    const armorSelect = document.getElementById("field-armor-select");
+    if (armorSelect) {
+      c.armor = armorSelect.value;
+    }
+
     c.speed = getVal("field-speed");
     c.speedSub = getVal("field-speedSub");
     c.extraTitle = getVal("field-extraTitle");
@@ -617,14 +822,32 @@ class DnDApp {
       if (nameEl) ab.name = nameEl.innerText.trim();
     });
 
-    c.attacks.forEach((atk, idx) => {
-      const nameEl = document.querySelector(`[data-atk-name="${idx}"]`);
-      const hitEl = document.querySelector(`[data-atk-hit="${idx}"]`);
-      const dmgEl = document.querySelector(`[data-atk-dmg="${idx}"]`);
-      if (nameEl) atk.name = nameEl.innerText.trim();
-      if (hitEl) atk.hit = hitEl.innerText.trim();
-      if (dmgEl) atk.dmg = dmgEl.innerText.trim();
+// Сохранение правок текста классового оружия
+    document.querySelectorAll('[data-atk-type="class"][data-atk-field="name"]').forEach(el => {
+      const idx = parseInt(el.getAttribute('data-atk-idx'), 10);
+      if (c.classAttacks && c.classAttacks[idx]) {
+        const row = el.closest('tr');
+        c.classAttacks[idx].name = (el.value !== undefined ? el.value : el.innerText).trim();
+        const hitEl = row?.querySelector('[data-atk-field="hit"]');
+        const dmgEl = row?.querySelector('[data-atk-field="dmg"]');
+        if (hitEl) c.classAttacks[idx].hit = hitEl.innerText.trim();
+        if (dmgEl) c.classAttacks[idx].dmg = dmgEl.innerText.trim();
+      }
     });
+
+// Сохранение пользовательского оружия
+    const customAtks = [];
+    document.querySelectorAll('[data-atk-type="custom"][data-atk-field="name"]').forEach(el => {
+      const row = el.closest('tr');
+      const hitEl = row?.querySelector('[data-atk-field="hit"]');
+      const dmgEl = row?.querySelector('[data-atk-field="dmg"]');
+      customAtks.push({
+        name: (el.value !== undefined ? el.value : el.innerText).trim(),
+        hit: hitEl ? hitEl.innerText.trim() : "d20 + 0",
+        dmg: dmgEl ? dmgEl.innerText.trim() : "1d6"
+      });
+    });
+    c.customAttacks = customAtks;
 
     const feats = [];
     document.querySelectorAll(`[data-feat]`).forEach(el => feats.push(el.innerHTML.trim()));
@@ -763,14 +986,24 @@ class DnDApp {
 
   addAttack() {
     this.saveCurrentDOM();
-    this.activeCharacter.attacks.push({ name: "Новое оружие", hit: "d20 + 0", dmg: "1d6" });
+    if (!this.activeCharacter.customAttacks) {
+      this.activeCharacter.customAttacks = [];
+    }
+    this.activeCharacter.customAttacks.push({ name: "Новое оружие", hit: "d20 + 0", dmg: "1d6" });
     this.renderActiveCard();
+    this.saveCurrentDOM();
   }
 
-  deleteAttack(idx) {
+  deleteAttack(type, idx) {
     this.saveCurrentDOM();
-    this.activeCharacter.attacks.splice(idx, 1);
+    const c = this.activeCharacter;
+    if (type === 'class' && c.classAttacks) {
+      c.classAttacks.splice(idx, 1);
+    } else if (type === 'custom' && c.customAttacks) {
+      c.customAttacks.splice(idx, 1);
+    }
     this.renderActiveCard();
+    this.saveCurrentDOM();
   }
 
   toggleDeathSave(type, count) {

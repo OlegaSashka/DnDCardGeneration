@@ -50,7 +50,7 @@ export class CardRenderer {
               <td style="width:18%; background:#f8fafc; border:1.5px solid #64748b; border-radius:6px; padding:2px;">
                 <span style="font-size:5.5pt; font-weight:bold; color:#475569; display:block;">КД</span>
                 <span style="font-size:10pt; font-weight:bold; color:#0f172a;">${c.ac || "10"}</span>
-                <span style="font-size:5pt; color:#64748b; display:block;">${c.acSub || ""}</span>
+                <span style="font-size:4.8pt; color:#64748b; display:block; line-height:1.1; margin-top:1px;">${c.armorLabel || "Без доспеха"}</span>
               </td>
               <td style="width:36%; background:#f8fafc; border:1.5px solid #64748b; border-radius:6px; padding:2px;">
                 <span style="font-size:5.5pt; font-weight:bold; color:#475569; display:block;">ХИТЫ (HP): ТЕК / МАКС (+ДОП)</span>
